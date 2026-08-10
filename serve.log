@@ -1,0 +1,38 @@
+Serving pet-pwa on 0.0.0.0:8090 ...
+127.0.0.1 - - [10/Aug/2026 14:58:43] "GET /app.js?v=2.1.0 HTTP/1.1" 200 -
+127.0.0.1 - - [10/Aug/2026 15:05:38] "GET /styles.css?v=7 HTTP/1.1" 200 -
+127.0.0.1 - - [10/Aug/2026 15:05:38] "GET /app.js?v=7 HTTP/1.1" 200 -
+127.0.0.1 - - [10/Aug/2026 15:05:39] code 404, message File not found
+127.0.0.1 - - [10/Aug/2026 15:05:39] "GET /favicon.ico HTTP/1.1" 404 -
+127.0.0.1 - - [10/Aug/2026 15:05:40] "GET /sw.js HTTP/1.1" 200 -
+127.0.0.1 - - [10/Aug/2026 15:05:41] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [10/Aug/2026 15:05:41] "GET /styles.css?v=2.1.0 HTTP/1.1" 200 -
+127.0.0.1 - - [10/Aug/2026 15:05:41] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [10/Aug/2026 15:05:41] "GET /app.js?v=2.1.0 HTTP/1.1" 200 -
+127.0.0.1 - - [10/Aug/2026 15:05:41] "GET /manifest.json HTTP/1.1" 200 -
+127.0.0.1 - - [10/Aug/2026 15:05:41] "GET /icon.svg HTTP/1.1" 200 -
+127.0.0.1 - - [10/Aug/2026 15:05:43] "GET /sw.js?v=2.1.0 HTTP/1.1" 200 -
+127.0.0.1 - - [10/Aug/2026 15:05:46] "GET /sw.js?v=2.1.0 HTTP/1.1" 304 -
+127.0.0.1 - - [10/Aug/2026 15:05:48] code 404, message File not found
+127.0.0.1 - - [10/Aug/2026 15:05:48] "GET /favicon.ico HTTP/1.1" 404 -
+127.0.0.1 - - [10/Aug/2026 15:11:41] "GET /sw.js?v=2.1.0 HTTP/1.1" 304 -
+127.0.0.1 - - [10/Aug/2026 15:11:42] code 404, message File not found
+127.0.0.1 - - [10/Aug/2026 15:11:42] "GET /favicon.ico HTTP/1.1" 404 -
+127.0.0.1 - - [10/Aug/2026 15:12:45] "GET /styles.css?v=2.1.0 HTTP/1.1" 200 -
+127.0.0.1 - - [10/Aug/2026 15:13:20] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [10/Aug/2026 15:13:20] "GET /styles.css?v=2.1.0 HTTP/1.1" 200 -
+127.0.0.1 - - [10/Aug/2026 15:13:20] "GET /app.js?v=2.1.0 HTTP/1.1" 200 -
+127.0.0.1 - - [10/Aug/2026 15:13:20] "GET /manifest.json HTTP/1.1" 200 -
+127.0.0.1 - - [10/Aug/2026 15:13:21] "GET /icon.svg HTTP/1.1" 200 -
+127.0.0.1 - - [10/Aug/2026 15:13:25] "GET /sw.js?v=2.1.0 HTTP/1.1" 200 -
+127.0.0.1 - - [10/Aug/2026 15:13:25] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [10/Aug/2026 15:13:29] code 404, message File not found
+127.0.0.1 - - [10/Aug/2026 15:13:29] "GET /favicon.ico HTTP/1.1" 404 -
+127.0.0.1 - - [10/Aug/2026 15:13:43] "GET /?reset=1786346023254 HTTP/1.1" 200 -
+127.0.0.1 - - [10/Aug/2026 15:13:46] "GET /sw.js?v=2.1.0 HTTP/1.1" 200 -
+127.0.0.1 - - [10/Aug/2026 15:13:46] "GET /styles.css?v=2.1.1 HTTP/1.1" 200 -
+127.0.0.1 - - [10/Aug/2026 15:13:46] "GET /app.js?v=2.1.1 HTTP/1.1" 200 -
+127.0.0.1 - - [10/Aug/2026 15:13:52] code 404, message File not found
+127.0.0.1 - - [10/Aug/2026 15:13:52] "GET /favicon.ico HTTP/1.1" 404 -
+127.0.0.1 - - [10/Aug/2026 15:13:53] code 404, message File not found
+127.0.0.1 - - [10/Aug/2026 15:13:53] "GET /favicon.ico HTTP/1.1" 404 -
