@@ -3,483 +3,616 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <meta name="theme-color" content="#FAF6F0">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>小宠打卡</title>
+  <meta name="apple-mobile-web-app-title" content="小宠打卡">
+  <meta name="theme-color" content="#FFC857">
+  <meta name="description" content="小朋友的电子宠物打卡养成APP">
+
+  <!-- PWA -->
   <link rel="manifest" href="manifest.json">
-  <link rel="apple-touch-icon" href="icon-192.png">
-  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
-  <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
-  <link rel="stylesheet" href="styles.css?v=2.1.3">
+  <link rel="apple-touch-icon" href="icon.svg">
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="styles.css?v=2.1.1">
+  <title>小宠打卡 - 电子宠物养成</title>
 </head>
 <body>
-  <div class="app">
-    <!-- 在线状态指示器 -->
-    <div id="online-indicator" class="online-indicator">离线模式</div>
+<div id="app">
 
-    <!-- 顶部状态栏 -->
+  <!-- 在线/离线状态指示器 -->
+  <div id="online-indicator" class="online-indicator">🟢 在线</div>
+
+
+  <!-- ===== Parent Mode Bar ===== -->
+  <div class="parent-bar" id="parent-bar">
+    🔒 家长模式 · 可编辑任务和商品
+    <button class="exit-btn" onclick="exitParentMode()">退出</button>
+  </div>
+
+  <!-- ===== Home Page ===== -->
+  <div class="page" id="page-home">
     <div class="status-bar">
-      <div class="app-title">小宠打卡</div>
-      <div class="status-right">
-        <button class="parent-mode-toggle" id="parent-toggle" onclick="toggleParentMode()">家长</button>
+      <span class="status-time">9:41</span>
+      <div class="icons">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.18L12 21z"/></svg>
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/></svg>
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z"/></svg>
       </div>
     </div>
 
-    <!-- 页面容器 -->
-    <div class="pages">
-      <!-- 任务页（原首页位置，现在作为默认首页） -->
-      <div class="page active" id="page-home">
-        <div class="page-header">
-          <div class="page-title">今日任务</div>
-          <div class="points-badge" id="task-points">0</div>
-        </div>
-        <div class="page-subtitle">完成任务获得积分和金币</div>
+    <div class="pet-header">
+      <div class="currency-group">
+        <span class="badge badge-points">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 16.8l-6.2 4.5 2.4-7.4L2 9.4h7.6z"/></svg>
+          <span id="home-points">120</span>
+        </span>
+        <span class="badge badge-coins">
+          <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2" fill="none"/><text x="12" y="16" text-anchor="middle" font-size="12" font-weight="bold" fill="currentColor">G</text></svg>
+          <span id="home-coins">320</span>
+        </span>
+      </div>
+    </div>
 
-        <div class="task-list" id="task-list"></div>
-
-        <button class="add-task-btn" id="add-task-btn" onclick="openTaskEditor()">
-          <span>+</span> 添加任务
-        </button>
-
-        <!-- 连续打卡 -->
-        <div class="streak-card">
-          <div class="streak-header">
-            <span class="streak-icon">🔥</span>
-            <span class="streak-num" id="streak-num">0</span>
-            <span class="streak-label">天连续打卡</span>
+    <div class="pet-scene" id="pet-scene">
+      <!-- CSS Creature: Mint Green Spirit -->
+      <div class="cat" id="cat">
+        <div class="cat-body">
+          <!-- Cast shadow on floor -->
+          <div class="cat-cast-shadow"></div>
+          <!-- Antennae with glowing tips -->
+          <div class="antenna antenna-left"><div class="antenna-glow"></div></div>
+          <div class="antenna antenna-right"><div class="antenna-glow"></div></div>
+          <!-- Head group -->
+          <div class="creature-head">
+            <div class="creature-face">
+              <div class="creature-eye eye-left">
+                <div class="eye-iris"></div>
+                <div class="eye-highlight eye-hl-1"></div>
+                <div class="eye-highlight eye-hl-2"></div>
+              </div>
+              <div class="creature-eye eye-right">
+                <div class="eye-iris"></div>
+                <div class="eye-highlight eye-hl-1"></div>
+                <div class="eye-highlight eye-hl-2"></div>
+              </div>
+              <div class="creature-blush blush-left"></div>
+              <div class="creature-blush blush-right"></div>
+              <div class="creature-mouth"></div>
+            </div>
           </div>
-          <div class="streak-dots" id="streak-dots"></div>
-        </div>
-
-        <div class="daily-summary">
-          <div class="summary-title">今日汇总</div>
-          <div class="summary-grid">
-            <div class="summary-item">
-              <div class="summary-value" id="summary-completed">0/0</div>
-              <div class="summary-label">已完成</div>
+          <!-- Body / torso -->
+          <div class="creature-torso">
+            <div class="creature-belly"></div>
+          </div>
+          <!-- Collar & Tag -->
+          <div class="creature-collar">
+            <div class="collar-tag">
+              <div class="tag-heart">♥</div>
+              <div class="tag-text">HAPPY</div>
             </div>
-            <div class="summary-item">
-              <div class="summary-value" id="summary-points">0</div>
-              <div class="summary-label">获得积分</div>
-            </div>
-            <div class="summary-item">
-              <div class="summary-value" id="summary-coins">0</div>
-              <div class="summary-label">获得金币</div>
-            </div>
+          </div>
+          <!-- Arms -->
+          <div class="creature-arm arm-left"></div>
+          <div class="creature-arm arm-right"></div>
+          <!-- Legs (short stubby) -->
+          <div class="cat-leg leg-fl"></div>
+          <div class="cat-leg leg-fr"></div>
+          <div class="cat-leg leg-bl"></div>
+          <div class="cat-leg leg-br"></div>
+          <!-- Tail (small round) -->
+          <div class="cat-tail">
+            <div class="tail-round"></div>
           </div>
         </div>
       </div>
+      <!-- Food particle for feeding animation -->
+      <div class="food-particle" id="food-particle">🐟</div>
+      <!-- Walk ground -->
+      <div class="walk-ground" id="walk-ground">
+        <div class="ground-line"></div>
+      </div>
+      <!-- Info -->
+      <div class="pet-mood" id="pet-mood">心情不错~</div>
+      <div class="pet-name" id="pet-name">小宠</div>
+      <div class="pet-level" id="pet-level">Lv.5</div>
+    </div>
 
-      <!-- 宠物页（原任务页位置） -->
-      <div class="page" id="page-tasks">
-        <div class="pet-header">
-          <div class="pet-greeting">你好呀！</div>
-          <div class="pet-currency">
-            <div class="currency-item points">
-              <span>⭐</span>
-              <span id="home-points">0</span>
-            </div>
-            <div class="currency-item coins">
-              <span>🪙</span>
-              <span id="home-coins">0</span>
-            </div>
-          </div>
+    <div class="status-section">
+      <div class="status-row">
+        <div class="status-icon" style="background:#FFE4DF">🍖</div>
+        <div class="status-info">
+          <div class="status-label">饱腹度</div>
+          <div class="status-bar-track"><div class="status-bar-fill" id="bar-hunger-fill" style="width:75%;background:#FF8C7A"></div></div>
         </div>
-
-        <!-- 宠物展示区 -->
-        <div class="pet-scene">
-          <div class="cat" id="cat">
-            <div class="cat-ear left"></div>
-            <div class="cat-ear right"></div>
-            <div class="cat-face">
-              <div class="cat-eye left"><div class="pupil"></div></div>
-              <div class="cat-eye right"><div class="pupil"></div></div>
-              <div class="cat-nose"></div>
-              <div class="cat-mouth"></div>
-              <div class="cat-blush left"></div>
-              <div class="cat-blush right"></div>
-            </div>
-            <div class="cat-body">
-              <div class="belly">
-                <div class="belly-heart">❤️</div>
-              </div>
-            </div>
-            <div class="cat-tail"></div>
-            <div class="cat-paw left"></div>
-            <div class="cat-paw right"></div>
-          </div>
-          <div class="pet-shadow"></div>
-          <div class="pet-mood" id="pet-mood">心情不错~</div>
+        <div class="status-percent" id="bar-hunger-percent">75%</div>
+      </div>
+      <div class="status-row">
+        <div class="status-icon" style="background:#D9ECF7">🛁</div>
+        <div class="status-info">
+          <div class="status-label">清洁度</div>
+          <div class="status-bar-track"><div class="status-bar-fill" id="bar-clean-fill" style="width:85%;background:#6BB6E0"></div></div>
         </div>
-
-        <div class="pet-info">
-          <div class="pet-name" id="pet-name">小宠</div>
-          <div class="pet-level" id="pet-level">Lv.1 新手驯兽师</div>
+        <div class="status-percent" id="bar-clean-percent">85%</div>
+      </div>
+      <div class="status-row">
+        <div class="status-icon" style="background:#FFF3D6">😊</div>
+        <div class="status-info">
+          <div class="status-label">心情值</div>
+          <div class="status-bar-track"><div class="status-bar-fill" id="bar-mood-fill" style="width:80%;background:#FFC857"></div></div>
         </div>
-
-        <!-- 状态条 -->
-        <div class="status-section">
-          <div class="status-bar-item">
-            <div class="status-label">
-              <span>🍖</span>
-              <span>饱腹度</span>
-            </div>
-            <div class="status-progress">
-              <div class="progress-track">
-                <div class="progress-fill" id="bar-hunger-fill"></div>
-              </div>
-              <span class="progress-percent" id="bar-hunger-percent">0%</span>
-            </div>
-          </div>
-          <div class="status-bar-item">
-            <div class="status-label">
-              <span>🛁</span>
-              <span>清洁度</span>
-            </div>
-            <div class="status-progress">
-              <div class="progress-track">
-                <div class="progress-fill" id="bar-clean-fill"></div>
-              </div>
-              <span class="progress-percent" id="bar-clean-percent">0%</span>
-            </div>
-          </div>
-          <div class="status-bar-item">
-            <div class="status-label">
-              <span>😊</span>
-              <span>心情值</span>
-            </div>
-            <div class="status-progress">
-              <div class="progress-track">
-                <div class="progress-fill" id="bar-mood-fill"></div>
-              </div>
-              <span class="progress-percent" id="bar-mood-percent">0%</span>
-            </div>
-          </div>
-          <div class="status-bar-item">
-            <div class="status-label">
-              <span>⚡</span>
-              <span>活力值</span>
-            </div>
-            <div class="status-progress">
-              <div class="progress-track">
-                <div class="progress-fill" id="bar-energy-fill"></div>
-              </div>
-              <span class="progress-percent" id="bar-energy-percent">0%</span>
-            </div>
-          </div>
+        <div class="status-percent" id="bar-mood-percent">80%</div>
+      </div>
+      <div class="status-row">
+        <div class="status-icon" style="background:#E0F0DA">⚡</div>
+        <div class="status-info">
+          <div class="status-label">活力值</div>
+          <div class="status-bar-track"><div class="status-bar-fill" id="bar-energy-fill" style="width:70%;background:#7BB56A"></div></div>
         </div>
+        <div class="status-percent" id="bar-energy-percent">70%</div>
+      </div>
+    </div>
 
-        <!-- 动作按钮 -->
-        <div class="action-section">
-          <div class="action-grid">
-            <button class="action-btn" onclick="feedPet()">
-              <div class="action-icon">🍖</div>
-              <div class="action-name">喂食</div>
-              <div class="action-cost">🪙 10</div>
-            </button>
-            <button class="action-btn" onclick="bathePet()">
-              <div class="action-icon">🛁</div>
-              <div class="action-name">洗澡</div>
-              <div class="action-cost">🪙 8</div>
-            </button>
-            <button class="action-btn" onclick="playWithPet()">
-              <div class="action-icon">🎾</div>
-              <div class="action-name">玩耍</div>
-              <div class="action-cost">🪙 12</div>
-            </button>
-            <button class="action-btn" onclick="walkPet()">
-              <div class="action-icon">🌳</div>
-              <div class="action-name">出门</div>
-              <div class="action-cost">🪙 15</div>
-            </button>
-          </div>
+    <div class="action-section">
+      <button class="action-btn" onclick="feedPet()">
+        <div class="action-icon" style="background:#FFE4DF">🍖</div>
+        <div class="action-label">喂食</div>
+        <div class="action-cost">🪙 10</div>
+      </button>
+      <button class="action-btn" onclick="bathPet()">
+        <div class="action-icon" style="background:#D9ECF7">🛁</div>
+        <div class="action-label">洗澡</div>
+        <div class="action-cost">🪙 8</div>
+      </button>
+      <button class="action-btn" onclick="playPet()">
+        <div class="action-icon" style="background:#FFF3D6">🎾</div>
+        <div class="action-label">玩耍</div>
+        <div class="action-cost">🪙 12</div>
+      </button>
+      <button class="action-btn" onclick="walkPet()">
+        <div class="action-icon" style="background:#E0F0DA">🌳</div>
+        <div class="action-label">出门</div>
+        <div class="action-cost">🪙 15</div>
+      </button>
+    </div>
+
+    <div class="card" onclick="switchTab('tasks')" style="cursor:pointer">
+      <div class="card-row">
+        <div class="card-icon" style="background:#FFF3D6">📋</div>
+        <div class="card-body">
+          <div class="card-title">今日任务</div>
+          <div class="card-desc" id="home-task-desc">完成<span id="home-task-count">0/4</span> · <span id="home-task-points">+0 积分</span></div>
+        </div>
+        <div class="card-arrow">›</div>
+      </div>
+    </div>
+
+    <div class="streak-card">
+      <div class="streak-flame">🔥</div>
+      <div>
+        <div class="streak-num" id="streak-num">7</div>
+        <div class="streak-label">天连续打卡</div>
+      </div>
+      <div class="streak-dots" id="streak-dots"></div>
+    </div>
+  </div>
+
+  <!-- ===== Task Page ===== -->
+  <div class="page active" id="page-tasks">
+    <div class="status-bar">
+      <span class="status-time">9:41</span>
+      <div class="icons">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.18L12 21z"/></svg>
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/></svg>
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z"/></svg>
+      </div>
+    </div>
+
+    <div class="page-header">
+      <div class="page-title">今日任务</div>
+      <span class="badge badge-points">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 16.8l-6.2 4.5 2.4-7.4L2 9.4h7.6z"/></svg>
+        <span id="task-points">120</span>
+      </span>
+    </div>
+    <div class="page-subtitle">完成任务获得积分和金币，积分可到商店兑换奖品，金币用于照顾宠物</div>
+
+    <div class="task-list" id="task-list"></div>
+    <button class="add-button" id="add-task-btn" style="display:none" onclick="openTaskEditor()">
+      + 添加新任务
+    </button>
+
+    <div class="daily-summary">
+      <div class="summary-row">
+        <div class="summary-item">
+          <div class="summary-num" id="summary-completed">0/4</div>
+          <div class="summary-label">完成任务</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-num" id="summary-points">0</div>
+          <div class="summary-label">今日积分</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-num" id="summary-coins">0</div>
+          <div class="summary-label">今日金币</div>
         </div>
       </div>
+      <div class="summary-tip">💡 每天完成任务，照顾小宠，还能去商店兑换奖品哦~</div>
+    </div>
+  </div>
 
-      <!-- 商店页 -->
-      <div class="page" id="page-shop">
-        <div class="page-header">
-          <div class="page-title">兑换商店</div>
-          <div class="points-badge" id="shop-points">0</div>
-        </div>
-        <div class="page-subtitle">用积分兑换奖励</div>
-        <div class="category-tabs" id="category-tabs"></div>
-        <div class="product-grid" id="product-grid"></div>
-        <button class="add-product-btn" id="add-product-btn" onclick="openProductEditor()">
-          <span>+</span> 添加商品
-        </button>
+  <!-- ===== Shop Page ===== -->
+  <div class="page" id="page-shop">
+    <div class="status-bar">
+      <span class="status-time">9:41</span>
+      <div class="icons">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.18L12 21z"/></svg>
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/></svg>
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z"/></svg>
       </div>
+    </div>
 
-      <!-- 我的页面 -->
-      <div class="page" id="page-profile">
-        <div class="page-header">
-          <div class="page-title">我的</div>
-        </div>
+    <div class="page-header">
+      <div class="page-title">积分商店</div>
+      <span class="badge badge-points">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 16.8l-6.2 4.5 2.4-7.4L2 9.4h7.6z"/></svg>
+        <span id="shop-points">120</span>
+      </span>
+    </div>
 
-        <div class="profile-card">
-          <div class="avatar-section">
-            <div class="avatar" id="profile-avatar" onclick="openProfileEditor()">
-              <img id="profile-avatar-img" style="display:none;width:100%;height:100%;border-radius:50%;object-fit:cover;">
-              <span id="profile-avatar-emoji" style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;">📷</span>
-            </div>
-            <div class="profile-info">
-              <div class="profile-name" id="profile-name">小主人</div>
-              <div class="profile-level" id="profile-level">Lv.1 新手驯兽师</div>
-            </div>
-          </div>
-          <div class="profile-stats">
-            <div class="profile-stat">
-              <div class="stat-value" id="stat-total-tasks">0</div>
-              <div class="stat-label">累计任务</div>
-            </div>
-            <div class="profile-stat">
-              <div class="stat-value" id="stat-total-points">0</div>
-              <div class="stat-label">累计积分</div>
-            </div>
-            <div class="profile-stat">
-              <div class="stat-value" id="stat-xp">0</div>
-              <div class="stat-label">经验值</div>
-            </div>
-            <div class="profile-stat">
-              <div class="stat-value" id="stat-streak">0</div>
-              <div class="stat-label">连续打卡</div>
-            </div>
-          </div>
-        </div>
+    <div class="category-tabs" id="category-tabs">
+      <button class="cat-tab active" onclick="filterCategory('全部')">全部</button>
+      <button class="cat-tab" onclick="filterCategory('玩具')">玩具</button>
+      <button class="cat-tab" onclick="filterCategory('学习')">学习</button>
+      <button class="cat-tab" onclick="filterCategory('零食')">零食</button>
+      <button class="cat-tab" onclick="filterCategory('体验券')">体验券</button>
+    </div>
 
+    <div class="product-grid" id="product-grid"></div>
+    <button class="add-button" id="add-product-btn" style="display:none" onclick="openProductEditor()">
+      + 上架新商品
+    </button>
+
+    <div class="shop-tip">💡 兑换后请找爸爸妈妈核销哦~</div>
+  </div>
+
+  <!-- ===== Profile Page ===== -->
+  <div class="page" id="page-profile">
+    <div class="status-bar">
+      <span class="status-time">9:41</span>
+      <div class="icons">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.18L12 21z"/></svg>
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/></svg>
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z"/></svg>
+      </div>
+    </div>
+
+    <div class="profile-card">
+      <div class="profile-avatar" id="profile-avatar" onclick="triggerAvatarUpload()" title="点击上传头像">
+        <img id="profile-avatar-img" class="profile-avatar-img" alt="头像">
+        <span class="profile-avatar-emoji" id="profile-avatar-emoji">👦</span>
+      </div>
+      <div>
+        <div class="profile-name" id="profile-name">小图</div>
+        <div class="profile-level" id="profile-level">Lv.5 宠物达人</div>
         <div class="xp-progress">
           <div class="xp-progress-bar" id="xp-progress-bar"></div>
-          <div class="xp-progress-text" id="xp-progress-text">0 / 100</div>
         </div>
+        <div class="xp-progress-text" id="xp-progress-text">0 / 100 XP</div>
+      </div>
+      <button class="profile-edit" onclick="openProfileEditor()">编辑</button>
+    </div>
+    <input type="file" id="avatar-file" accept="image/*" style="display:none" onchange="handleAvatarFile(this)">
 
-        <div class="section-title">待核销商品</div>
-        <div class="pending-card">
-          <div id="pending-list" class="pending-list"></div>
-        </div>
-
-        <div class="section-title">兑换记录</div>
-        <div class="history-card">
-          <div id="history-list" class="history-list"></div>
-        </div>
-
-        <div class="settings-section">
-          <div class="section-title">设置</div>
-          <div class="setting-item" onclick="openNameEditor()">
-            <span>修改宠物名字</span>
-            <span class="setting-arrow">›</span>
-          </div>
-          <div class="setting-item" onclick="openPasswordSetup()">
-            <span>家长模式密码</span>
-            <span class="setting-arrow">›</span>
-          </div>
-          <div class="setting-item" onclick="exportData()">
-            <span>导出数据</span>
-            <span class="setting-arrow">›</span>
-          </div>
-          <div class="setting-item" onclick="importData()">
-            <span>导入数据</span>
-            <span class="setting-arrow">›</span>
-          </div>
-          <div class="setting-item danger" onclick="resetAllData()">
-            <span>重置所有数据</span>
-            <span class="setting-arrow">›</span>
-          </div>
-        </div>
-
-        <div class="app-version">v2.1.3</div>
+    <div class="stats-row">
+      <div class="stat-item">
+        <div class="stat-num" id="stat-tasks">42</div>
+        <div class="stat-label">累计任务</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num" id="stat-points">320</div>
+        <div class="stat-label">累计积分</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num" id="stat-coins">180</div>
+        <div class="stat-label">累计金币</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num" id="stat-xp">0</div>
+        <div class="stat-label">经验值</div>
       </div>
     </div>
 
-    <!-- 底部导航 -->
-    <div class="tab-bar">
-      <button class="tab-item active" data-tab="home" onclick="switchTab('home')">
-        <div class="tab-icon">📋</div>
-        <div class="tab-label">任务</div>
-      </button>
-      <button class="tab-item" data-tab="tasks" onclick="switchTab('tasks')">
-        <div class="tab-icon">🐱</div>
-        <div class="tab-label">宠物</div>
-      </button>
-      <button class="tab-item" data-tab="shop" onclick="switchTab('shop')">
-        <div class="tab-icon">🛒</div>
-        <div class="tab-label">商店</div>
-      </button>
-      <button class="tab-item" data-tab="profile" onclick="switchTab('profile')">
-        <div class="tab-icon">👤</div>
-        <div class="tab-label">我的</div>
-      </button>
+    <div class="section-title" style="display:flex;align-items:center;justify-content:space-between">
+      <span>兑换记录</span>
+      <span class="section-more" id="history-more" onclick="showAllHistory()" style="display:none;font-size:13px;font-weight:500;color:var(--text-light);cursor:pointer">更多 ›</span>
+    </div>
+    <div id="history-list"></div>
+
+    <div class="section-title" style="display:flex;align-items:center;justify-content:space-between">
+      <span>待核销商品</span>
+      <span class="pending-badge" id="pending-count-badge">0</span>
+    </div>
+    <div class="pending-section" id="pending-section">
+      <div class="pending-header" onclick="togglePendingList()">
+        <div class="pending-header-text">
+          <span>🎫</span>
+          <span class="pending-count" id="pending-count-text">0件待核销商品</span>
+        </div>
+        <span style="font-size:14px;color:var(--text-light)" id="pending-arrow">›</span>
+      </div>
+      <div class="pending-list" id="pending-list"></div>
+    </div>
+    <div style="margin-bottom:16px"></div>
+
+    <div class="section-title">设置</div>
+    <div class="settings-card">
+      <div class="setting-item">
+        <div class="setting-icon" style="background:#FFF3D6">⏰</div>
+        <div class="setting-label">每日提醒</div>
+        <div class="setting-value">18:00</div>
+      </div>
+      <div class="setting-item" onclick="toggleParentMode()">
+        <div class="setting-icon" style="background:#E0F0DA">👨‍👩‍👧</div>
+        <div class="setting-label">家长模式</div>
+        <div class="setting-value" id="parent-mode-text">未开启</div>
+        <div class="parent-toggle" id="parent-toggle"></div>
+      </div>
+      <div class="setting-item">
+        <div class="setting-icon" style="background:#D9ECF7">ℹ️</div>
+        <div class="setting-label">关于</div>
+        <div class="setting-value" id="app-version">v2.1.0</div>
+      </div>
+      <div class="setting-item">
+        <div class="setting-icon" style="background:#E0F0DA">💾</div>
+        <div class="setting-label">数据备份</div>
+        <div style="display:flex;gap:8px">
+          <button class="mini-btn" onclick="exportBackup()">导出</button>
+          <button class="mini-btn" onclick="document.getElementById('backup-file').click()">导入</button>
+        </div>
+      </div>
+      <div class="setting-item">
+        <div class="setting-icon" style="background:#FCE4E4">♻️</div>
+        <div class="setting-label">恢复出厂设置</div>
+        <button class="mini-btn" style="background:#FFE3E0;color:#D63A2F" onclick="resetAllData()">重置</button>
+      </div>
+      <input type="file" id="backup-file" accept="application/json" style="display:none" onchange="handleBackupFile(this)">
     </div>
   </div>
 
-  <!-- 全局弹窗/浮层 -->
-  <div class="toast" id="toast"></div>
-  <div class="overlay" id="overlay" onclick="closeAllModals()"></div>
-
-  <!-- 任务编辑弹窗 -->
-  <div class="modal" id="task-modal">
-    <div class="modal-header">
-      <div class="modal-title" id="task-modal-title">添加任务</div>
-      <button class="modal-close" onclick="closeAllModals()">×</button>
-    </div>
-    <div class="modal-body">
-      <div class="form-group">
-        <label>任务名称</label>
-        <input type="text" id="task-name" placeholder="例如：完成数学作业">
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label>积分奖励</label>
-          <input type="number" id="task-points" value="10" min="1">
-        </div>
-        <div class="form-group">
-          <label>金币奖励</label>
-          <input type="number" id="task-coins" value="5" min="0">
-        </div>
-      </div>
-      <div class="form-group">
-        <label>图标</label>
-        <div class="emoji-picker" id="task-emoji-picker"></div>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn-danger" id="task-delete-btn" style="display:none;" onclick="deleteTask()">删除</button>
-      <div style="flex:1;"></div>
-      <button class="btn-secondary" onclick="closeAllModals()">取消</button>
-      <button class="btn-primary" onclick="saveTask()">保存</button>
-    </div>
+  <!-- ===== Bottom Tab Bar ===== -->
+  <div class="tab-bar">
+    <button class="tab-item active" data-tab="tasks">
+      <span class="tab-icon">📋</span>
+      <span class="tab-label">任务</span>
+    </button>
+    <button class="tab-item" data-tab="home">
+      <span class="tab-icon">🐱</span>
+      <span class="tab-label">宠物</span>
+    </button>
+    <button class="tab-item" data-tab="shop">
+      <span class="tab-icon">🎁</span>
+      <span class="tab-label">商店</span>
+    </button>
+    <button class="tab-item" data-tab="profile">
+      <span class="tab-icon">👤</span>
+      <span class="tab-label">我的</span>
+    </button>
   </div>
 
-  <!-- 商品编辑弹窗 -->
-  <div class="modal" id="product-modal">
-    <div class="modal-header">
-      <div class="modal-title" id="product-modal-title">添加商品</div>
-      <button class="modal-close" onclick="closeAllModals()">×</button>
-    </div>
-    <div class="modal-body">
-      <div class="form-group">
-        <label>商品名称</label>
-        <input type="text" id="product-name" placeholder="例如：看一集动画片">
+</div>
+
+<!-- ===== Task Complete Popup ===== -->
+<div class="popup-overlay" id="task-popup">
+  <div class="popup-card">
+    <div class="popup-icon">🎉</div>
+    <div class="popup-title">打卡成功！</div>
+    <div class="popup-desc">太棒了，继续加油~</div>
+    <div class="popup-rewards">
+      <div class="popup-reward">
+        <div class="popup-reward-num" style="color:#6BB6E0" id="popup-task-points">+10</div>
+        <div class="popup-reward-label">积分</div>
       </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label>所需积分</label>
-          <input type="number" id="product-price" value="50" min="1">
-        </div>
-        <div class="form-group">
-          <label>库存</label>
-          <input type="number" id="product-stock" value="1" min="0">
-        </div>
-      </div>
-      <div class="form-group">
-        <label>分类</label>
-        <input type="text" id="product-category" placeholder="例如：娱乐">
-      </div>
-      <div class="form-group">
-        <label>图标</label>
-        <div class="emoji-picker" id="product-emoji-picker"></div>
+      <div class="popup-reward">
+        <div class="popup-reward-num" style="color:#E6A82E" id="popup-task-coins">+5</div>
+        <div class="popup-reward-label">金币</div>
       </div>
     </div>
-    <div class="modal-footer">
-      <button class="btn-danger" id="product-delete-btn" style="display:none;" onclick="deleteProduct()">删除</button>
-      <div style="flex:1;"></div>
-      <button class="btn-secondary" onclick="closeAllModals()">取消</button>
-      <button class="btn-primary" onclick="saveProduct()">保存</button>
+    <button class="popup-btn" onclick="closePopup('task-popup')">太棒了！</button>
+  </div>
+</div>
+
+<!-- ===== Exchange Success Popup ===== -->
+<div class="popup-overlay" id="exchange-popup">
+  <div class="popup-card">
+    <div class="popup-icon">🎁</div>
+    <div class="popup-title">兑换成功！</div>
+    <div class="popup-desc"><span id="popup-ex-name">小汽车玩具</span></div>
+    <div class="popup-qr">
+      <canvas id="qr-canvas"></canvas>
+    </div>
+    <div class="popup-code" id="popup-ex-code">EX2026080401</div>
+    <div class="popup-desc">请找爸爸妈妈核销哦~</div>
+    <button class="popup-btn" onclick="closePopup('exchange-popup')">知道了</button>
+  </div>
+</div>
+
+<!-- ===== Password Popup ===== -->
+<div class="popup-overlay password-popup" id="password-popup">
+  <div class="popup-card">
+    <div class="popup-title">🔒 家长验证</div>
+    <div class="popup-desc">请输入密码进入家长模式</div>
+    <div class="password-dots" id="password-dots">
+      <div class="password-dot"></div>
+      <div class="password-dot"></div>
+      <div class="password-dot"></div>
+      <div class="password-dot"></div>
+    </div>
+    <div class="password-keypad" id="password-keypad">
+      <button class="keypad-btn" onclick="inputPassword('1')">1</button>
+      <button class="keypad-btn" onclick="inputPassword('2')">2</button>
+      <button class="keypad-btn" onclick="inputPassword('3')">3</button>
+      <button class="keypad-btn" onclick="inputPassword('4')">4</button>
+      <button class="keypad-btn" onclick="inputPassword('5')">5</button>
+      <button class="keypad-btn" onclick="inputPassword('6')">6</button>
+      <button class="keypad-btn" onclick="inputPassword('7')">7</button>
+      <button class="keypad-btn" onclick="inputPassword('8')">8</button>
+      <button class="keypad-btn" onclick="inputPassword('9')">9</button>
+      <button class="keypad-btn delete" onclick="inputPassword('delete')">⌫</button>
+      <button class="keypad-btn zero" onclick="inputPassword('0')">0</button>
+      <button class="keypad-btn" style="visibility:hidden">-</button>
+    </div>
+    <div class="password-actions">
+      <button class="popup-btn cancel-btn" onclick="closePopup('password-popup')">取消</button>
     </div>
   </div>
+</div>
 
-  <!-- 密码弹窗 -->
-  <div class="modal" id="password-modal">
-    <div class="modal-header">
-      <div class="modal-title" id="password-modal-title">家长模式验证</div>
-      <button class="modal-close" onclick="closeAllModals()">×</button>
+<!-- ===== Task Edit Popup ===== -->
+<div class="popup-overlay edit-popup" id="task-edit-popup">
+  <div class="popup-card">
+    <div class="popup-title" id="task-edit-title">编辑任务</div>
+    <div class="form-group">
+      <label class="form-label">选择图标</label>
+      <div class="emoji-grid" id="task-emoji-grid"></div>
     </div>
-    <div class="modal-body">
+    <div class="form-group">
+      <label class="form-label">任务名称 <span class="hint"></span></label>
+      <input class="form-input" id="task-name-input" placeholder="例如：完成数学作业">
+    </div>
+    <div class="form-row">
       <div class="form-group">
-        <label id="password-label">请输入家长密码</label>
-        <input type="password" id="parent-password" placeholder="4位数字密码">
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn-secondary" onclick="closeAllModals()">取消</button>
-      <button class="btn-primary" onclick="checkPassword()">确认</button>
-    </div>
-  </div>
-
-  <!-- 名字编辑弹窗 -->
-  <div class="modal" id="name-modal">
-    <div class="modal-header">
-      <div class="modal-title">修改宠物名字</div>
-      <button class="modal-close" onclick="closeAllModals()">×</button>
-    </div>
-    <div class="modal-body">
-      <div class="form-group">
-        <label>新名字</label>
-        <input type="text" id="new-pet-name" placeholder="例如：咪咪">
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn-secondary" onclick="closeAllModals()">取消</button>
-      <button class="btn-primary" onclick="savePetName()">保存</button>
-    </div>
-  </div>
-
-  <!-- 兑换确认弹窗 -->
-  <div class="modal" id="exchange-modal">
-    <div class="modal-header">
-      <div class="modal-title">确认兑换</div>
-      <button class="modal-close" onclick="closeAllModals()">×</button>
-    </div>
-    <div class="modal-body">
-      <div class="exchange-preview" id="exchange-preview"></div>
-      <div class="exchange-code" id="exchange-code"></div>
-      <p class="exchange-tip">请向家长出示兑换码进行核销</p>
-    </div>
-    <div class="modal-footer">
-      <button class="btn-secondary" onclick="closeAllModals()">关闭</button>
-    </div>
-  </div>
-
-  <!-- 个人资料编辑弹窗 -->
-  <div class="modal" id="profile-edit-popup">
-    <div class="modal-header">
-      <div class="modal-title">编辑资料</div>
-      <button class="modal-close" onclick="closeAllModals()">×</button>
-    </div>
-    <div class="modal-body">
-      <div class="form-group" style="display:flex;align-items:center;gap:12px;">
-        <div onclick="triggerAvatarUpload()" style="cursor:pointer;width:60px;height:60px;border-radius:50%;background:#FFE8D6;position:relative;">
-          <img id="profile-edit-avatar-img" style="display:none;width:100%;height:100%;border-radius:50%;object-fit:cover;">
-          <span id="profile-edit-avatar-emoji" style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;">📷</span>
-        </div>
-        <span style="font-size:13px;color:#999;">点击更换头像</span>
-        <input type="file" id="avatar-file" accept="image/*" onchange="handleAvatarFile(this)" style="display:none;">
+        <label class="form-label">积分奖励 ⭐</label>
+        <input class="form-input" id="task-points-input" type="number" min="1" value="10" placeholder="积分">
       </div>
       <div class="form-group">
-        <label>昵称</label>
-        <input type="text" id="profile-name-input" placeholder="输入昵称">
+        <label class="form-label">金币奖励 🪙</label>
+        <input class="form-input" id="task-coins-input" type="number" min="0" value="5" placeholder="金币">
       </div>
     </div>
-    <div class="modal-footer">
-      <button class="btn-secondary" onclick="closeAllModals()">取消</button>
-      <button class="btn-primary" onclick="saveProfile()">保存</button>
+    <div class="edit-actions">
+      <button class="popup-btn delete-btn" id="task-delete-btn" style="display:none" onclick="deleteTask()">删除任务</button>
+      <button class="popup-btn save-btn" onclick="saveTask()">保存</button>
+      <button class="popup-btn cancel-btn" onclick="closePopup('task-edit-popup')">取消</button>
     </div>
   </div>
+</div>
 
-  <!-- 升级弹窗 -->
-  <div class="popup-levelup" id="levelup-popup">
-    <div class="levelup-content">
-      <div class="levelup-badge">🎉</div>
-      <div class="levelup-title" id="levelup-title">升级啦！</div>
-      <div class="levelup-old" id="levelup-old">Lv.1</div>
-      <div class="levelup-arrow">➜</div>
-      <div class="levelup-new" id="levelup-new">Lv.2</div>
+<!-- ===== Product Edit Popup ===== -->
+<div class="popup-overlay edit-popup" id="product-edit-popup">
+  <div class="popup-card">
+    <div class="popup-title" id="product-edit-title">编辑商品</div>
+    <div class="form-group">
+      <label class="form-label">商品图标</label>
+      <div class="emoji-grid" id="product-emoji-grid"></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">商品名称</label>
+      <input class="form-input" id="product-name-input" placeholder="例如：小汽车玩具">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">兑换积分 ⭐</label>
+        <input class="form-input" id="product-price-input" type="number" min="1" value="50" placeholder="积分">
+      </div>
+      <div class="form-group">
+        <label class="form-label">库存数量 📦</label>
+        <input class="form-input" id="product-stock-input" type="number" min="0" value="5" placeholder="库存">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">商品分类</label>
+      <select class="form-select" id="product-category-input">
+        <option value="玩具">玩具</option>
+        <option value="学习">学习</option>
+        <option value="零食">零食</option>
+        <option value="体验券">体验券</option>
+      </select>
+    </div>
+    <div class="edit-actions">
+      <button class="popup-btn delete-btn" id="product-delete-btn" style="display:none" onclick="deleteProduct()">删除商品</button>
+      <button class="popup-btn save-btn" onclick="saveProduct()">保存</button>
+      <button class="popup-btn cancel-btn" onclick="closePopup('product-edit-popup')">取消</button>
     </div>
   </div>
+</div>
 
-  <!-- 撒花画布 -->
-  <canvas id="confetti-canvas" class="confetti-canvas"></canvas>
+<!-- ===== Profile Edit Popup ===== -->
+<div class="popup-overlay edit-popup" id="profile-edit-popup">
+  <div class="popup-card">
+    <div class="popup-title">编辑资料</div>
+    <div class="profile-edit-avatar">
+      <div class="profile-avatar-large" id="profile-avatar-large" onclick="triggerAvatarUpload()" title="点击上传头像">
+        <img id="profile-edit-avatar-img" class="profile-avatar-img-large" alt="头像">
+        <span class="profile-avatar-emoji" id="profile-edit-avatar-emoji">👦</span>
+      </div>
+      <button class="mini-btn" type="button" onclick="triggerAvatarUpload()">📷 上传头像</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">昵称</label>
+      <input class="form-input" id="profile-name-input" placeholder="请输入昵称" maxlength="12">
+    </div>
+    <div class="edit-actions">
+      <button class="popup-btn save-btn" onclick="saveProfile()">保存</button>
+      <button class="popup-btn cancel-btn" onclick="closePopup('profile-edit-popup')">取消</button>
+    </div>
+  </div>
+</div>
 
-  <script src="app.js?v=2.1.3"></script>
+<!-- ===== First-Time Setup Screen ===== -->
+<div class="setup-screen" id="setup-screen">
+  <div class="setup-card" id="setup-card">
+    <div class="setup-mascot">🐱</div>
+    <div class="setup-title" id="setup-title">欢迎来到小宠打卡！</div>
+    <div class="setup-desc" id="setup-desc">请先设置家长密码，用于管理任务和商店</div>
+    <div class="password-dots" id="setup-dots">
+      <div class="password-dot"></div>
+      <div class="password-dot"></div>
+      <div class="password-dot"></div>
+      <div class="password-dot"></div>
+    </div>
+    <div class="setup-error" id="setup-error"></div>
+    <div class="password-keypad" id="setup-keypad">
+      <button class="keypad-btn" onclick="setupInput('1')">1</button>
+      <button class="keypad-btn" onclick="setupInput('2')">2</button>
+      <button class="keypad-btn" onclick="setupInput('3')">3</button>
+      <button class="keypad-btn" onclick="setupInput('4')">4</button>
+      <button class="keypad-btn" onclick="setupInput('5')">5</button>
+      <button class="keypad-btn" onclick="setupInput('6')">6</button>
+      <button class="keypad-btn" onclick="setupInput('7')">7</button>
+      <button class="keypad-btn" onclick="setupInput('8')">8</button>
+      <button class="keypad-btn" onclick="setupInput('9')">9</button>
+      <button class="keypad-btn delete" onclick="setupInput('delete')">⌫</button>
+      <button class="keypad-btn zero" onclick="setupInput('0')">0</button>
+      <button class="keypad-btn" style="visibility:hidden">-</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Toast ===== -->
+<div class="toast" id="toast"></div>
+
+<!-- ===== Level Up Popup ===== -->
+<div class="popup-overlay" id="levelup-popup">
+  <div class="popup-card">
+    <div class="popup-icon">🎉</div>
+    <div class="popup-title">升级啦！</div>
+    <div class="popup-levelup">
+      <span class="levelup-old" id="levelup-old">Lv.1</span>
+      <span class="levelup-arrow">→</span>
+      <span class="levelup-new" id="levelup-new">Lv.2</span>
+    </div>
+    <div class="popup-desc" id="levelup-title">宠物升到了 Lv.2，解锁新外观！</div>
+    <button class="popup-btn" onclick="closePopup('levelup-popup')">太棒了！</button>
+  </div>
+</div>
+
+<!-- ===== Confetti Canvas ===== -->
+<canvas id="confetti-canvas" class="confetti-canvas"></canvas>
+
+<script src="app.js?v=2.1.1"></script>
 </body>
 </html>

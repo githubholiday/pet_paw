@@ -9,6 +9,7 @@ var PASSWORD_KEY = 'parent-password';
 var AVATAR_KEY = 'pet-app-avatar';
 var APP_VERSION = '2.1.1';
 var SCHEMA_VERSION = 3;
+var _showFullHistory = false;
 
 /* ===== 集中配置 ===== */
 var COSTS = { feed: 10, bath: 8, play: 12, walk: 15 };
@@ -450,8 +451,13 @@ function inputPassword(char) {
 
   if (passwordInput.length === pwLen) {
     if (verifyPassword(passwordInput)) {
+      state.parentMode = true;
+      saveState();
       closePopup('password-popup');
-      enterParentMode();
+      document.getElementById('parent-bar').classList.add('show');
+      document.getElementById('parent-toggle').classList.add('on');
+      document.getElementById('parent-mode-text').textContent = '\u5DF2\u5F00\u542F';
+      refreshAll();
       showToast('\u2705 \u5DF2\u8FDB\u5165\u5BB6\u957F\u6A21\u5F0F');
     } else {
       passwordInput = '';
@@ -475,25 +481,12 @@ function updatePasswordDots() {
   dots.forEach(function(d, i) { d.classList.toggle('filled', i < passwordInput.length); });
 }
 
-function enterParentMode() {
-  state.parentMode = true;
-  saveState();
-  var bar = document.getElementById('parent-bar');
-  if (bar) bar.classList.add('show');
-  document.getElementById('parent-toggle').classList.add('on');
-  var modeText = document.getElementById('parent-mode-text');
-  if (modeText) modeText.textContent = '\u5DF2\u5F00\u542F';
-  refreshAll();
-}
-
 function exitParentMode() {
   state.parentMode = false;
   saveState();
-  var bar = document.getElementById('parent-bar');
-  if (bar) bar.classList.remove('show');
+  document.getElementById('parent-bar').classList.remove('show');
   document.getElementById('parent-toggle').classList.remove('on');
-  var modeText = document.getElementById('parent-mode-text');
-  if (modeText) modeText.textContent = '\u672A\u5F00\u542F';
+  document.getElementById('parent-mode-text').textContent = '\u672A\u5F00\u542F';
   refreshAll();
   showToast('\u5DF2\u9000\u51FA\u5BB6\u957F\u6A21\u5F0F');
 }
@@ -582,49 +575,49 @@ function updateSetupDots() {
 /* ===== 任务编辑器 ===== */
 function openTaskEditor(taskId) {
   currentEditTaskId = taskId || null;
-  var popup = document.getElementById('task-modal');
-  var title = document.getElementById('task-modal-title');
+  var popup = document.getElementById('task-edit-popup');
+  var title = document.getElementById('task-edit-title');
   var deleteBtn = document.getElementById('task-delete-btn');
 
-  var grid = document.getElementById('task-emoji-picker');
+  var grid = document.getElementById('task-emoji-grid');
   grid.innerHTML = EMOJIS.map(function(e) { return '<button class="emoji-item" onclick="selectTaskEmoji(\'' + e + '\', this)">' + e + '</button>'; }).join('');
 
   if (taskId) {
     var task = state.tasks.find(function(t) { return t.id === taskId; });
     if (!task) return;
     title.textContent = '\u7F16\u8F91\u4EFB\u52A1';
-    document.getElementById('task-name').value = task.name;
-    document.getElementById('task-points').value = task.points;
-    document.getElementById('task-coins').value = task.coins;
-    if (deleteBtn) deleteBtn.style.display = 'block';
+    document.getElementById('task-name-input').value = task.name;
+    document.getElementById('task-points-input').value = task.points;
+    document.getElementById('task-coins-input').value = task.coins;
+    deleteBtn.style.display = 'block';
 
     var emojiBtns = grid.querySelectorAll('.emoji-item');
     emojiBtns.forEach(function(b) { if (b.textContent === task.emoji) b.classList.add('selected'); });
   } else {
     title.textContent = '\u6DFB\u52A0\u65B0\u4EFB\u52A1';
-    document.getElementById('task-name').value = '';
-    document.getElementById('task-points').value = '10';
-    document.getElementById('task-coins').value = '5';
-    if (deleteBtn) deleteBtn.style.display = 'none';
+    document.getElementById('task-name-input').value = '';
+    document.getElementById('task-points-input').value = '10';
+    document.getElementById('task-coins-input').value = '5';
+    deleteBtn.style.display = 'none';
     var firstBtn = grid.querySelector('.emoji-item');
     if (firstBtn) firstBtn.classList.add('selected');
   }
-  showModal('task-modal');
+  popup.classList.add('show');
 }
 
 function selectTaskEmoji(emoji, btn) {
   selectedTaskEmoji = emoji;
-  document.querySelectorAll('#task-emoji-picker .emoji-item').forEach(function(b) { b.classList.remove('selected'); });
+  document.querySelectorAll('#task-emoji-grid .emoji-item').forEach(function(b) { b.classList.remove('selected'); });
   btn.classList.add('selected');
 }
 
 function saveTask() {
-  var name = document.getElementById('task-name').value.trim();
-  var points = parseInt(document.getElementById('task-points').value) || 1;
-  var coins = parseInt(document.getElementById('task-coins').value) || 0;
+  var name = document.getElementById('task-name-input').value.trim();
+  var points = parseInt(document.getElementById('task-points-input').value) || 1;
+  var coins = parseInt(document.getElementById('task-coins-input').value) || 0;
   if (!name) { showToast('\u8BF7\u8F93\u5165\u4EFB\u52A1\u540D\u79F0'); return; }
 
-  var selectedBtn = document.querySelector('#task-emoji-picker .emoji-item.selected');
+  var selectedBtn = document.querySelector('#task-emoji-grid .emoji-item.selected');
   var emoji = selectedBtn ? selectedBtn.textContent : '\uD83D\uDCDD';
 
   if (currentEditTaskId) {
@@ -643,7 +636,7 @@ function saveTask() {
   }
 
   saveState();
-  hideModal('task-modal');
+  closePopup('task-edit-popup');
   currentEditTaskId = null;
   refreshAll();
   showToast('\u2705 \u4EFB\u52A1\u5DF2\u4FDD\u5B58');
@@ -654,7 +647,7 @@ function deleteTask() {
   if (!confirm('\u786E\u5B9A\u8981\u5220\u9664\u8FD9\u4E2A\u4EFB\u52A1\u5417\uFF1F')) return;
   state.tasks = state.tasks.filter(function(t) { return t.id !== currentEditTaskId; });
   saveState();
-  hideModal('task-modal');
+  closePopup('task-edit-popup');
   currentEditTaskId = null;
   refreshAll();
   showToast('\uD83D\uDDD1\uFE0F \u4EFB\u52A1\u5DF2\u5220\u9664');
@@ -664,59 +657,59 @@ function deleteTaskById(taskId) {
   if (!confirm('\u786E\u5B9A\u8981\u5220\u9664\u8FD9\u4E2A\u4EFB\u52A1\u5417\uFF1F')) return;
   state.tasks = state.tasks.filter(function(t) { return t.id !== taskId; });
   saveState();
-  renderHome();
+  renderTasks();
 }
 
 /* ===== 商品编辑器 ===== */
 function openProductEditor(productId) {
   currentEditProductId = productId || null;
-  var popup = document.getElementById('product-modal');
-  var title = document.getElementById('product-modal-title');
+  var popup = document.getElementById('product-edit-popup');
+  var title = document.getElementById('product-edit-title');
   var deleteBtn = document.getElementById('product-delete-btn');
 
-  var grid = document.getElementById('product-emoji-picker');
+  var grid = document.getElementById('product-emoji-grid');
   grid.innerHTML = PRODUCT_EMOJIS.map(function(e) { return '<button class="emoji-item" onclick="selectProductEmoji(\'' + e + '\', this)">' + e + '</button>'; }).join('');
 
   if (productId) {
     var product = state.products.find(function(p) { return p.id === productId; });
     if (!product) return;
     title.textContent = '\u7F16\u8F91\u5546\u54C1';
-    document.getElementById('product-name').value = product.name;
-    document.getElementById('product-price').value = product.price;
-    document.getElementById('product-stock').value = product.stock;
-    document.getElementById('product-category').value = product.category;
-    if (deleteBtn) deleteBtn.style.display = 'block';
+    document.getElementById('product-name-input').value = product.name;
+    document.getElementById('product-price-input').value = product.price;
+    document.getElementById('product-stock-input').value = product.stock;
+    document.getElementById('product-category-input').value = product.category;
+    deleteBtn.style.display = 'block';
 
     grid.querySelectorAll('.emoji-item').forEach(function(b) {
       if (b.textContent === product.emoji) b.classList.add('selected');
     });
   } else {
     title.textContent = '\u4E0A\u67B6\u65B0\u5546\u54C1';
-    document.getElementById('product-name').value = '';
-    document.getElementById('product-price').value = '50';
-    document.getElementById('product-stock').value = '5';
-    document.getElementById('product-category').value = '\u73A9\u5177';
-    if (deleteBtn) deleteBtn.style.display = 'none';
+    document.getElementById('product-name-input').value = '';
+    document.getElementById('product-price-input').value = '50';
+    document.getElementById('product-stock-input').value = '5';
+    document.getElementById('product-category-input').value = '\u73A9\u5177';
+    deleteBtn.style.display = 'none';
     var firstBtn = grid.querySelector('.emoji-item');
     if (firstBtn) firstBtn.classList.add('selected');
   }
-  showModal('product-modal');
+  popup.classList.add('show');
 }
 
 function selectProductEmoji(emoji, btn) {
   selectedProductEmoji = emoji;
-  document.querySelectorAll('#product-emoji-picker .emoji-item').forEach(function(b) { b.classList.remove('selected'); });
+  document.querySelectorAll('#product-emoji-grid .emoji-item').forEach(function(b) { b.classList.remove('selected'); });
   btn.classList.add('selected');
 }
 
 function saveProduct() {
-  var name = document.getElementById('product-name').value.trim();
-  var price = parseInt(document.getElementById('product-price').value) || 1;
-  var stock = parseInt(document.getElementById('product-stock').value) || 0;
-  var category = document.getElementById('product-category').value;
+  var name = document.getElementById('product-name-input').value.trim();
+  var price = parseInt(document.getElementById('product-price-input').value) || 1;
+  var stock = parseInt(document.getElementById('product-stock-input').value) || 0;
+  var category = document.getElementById('product-category-input').value;
   if (!name) { showToast('\u8BF7\u8F93\u5165\u5546\u54C1\u540D\u79F0'); return; }
 
-  var selectedBtn = document.querySelector('#product-emoji-picker .emoji-item.selected');
+  var selectedBtn = document.querySelector('#product-emoji-grid .emoji-item.selected');
   var emoji = selectedBtn ? selectedBtn.textContent : '\uD83C\uDF81';
 
   if (currentEditProductId) {
@@ -737,7 +730,7 @@ function saveProduct() {
 
   renderCategoryTabs();
   saveState();
-  hideModal('product-modal');
+  closePopup('product-edit-popup');
   currentEditProductId = null;
   refreshAll();
   showToast('\u2705 \u5546\u54C1\u5DF2\u4FDD\u5B58');
@@ -748,7 +741,7 @@ function deleteProduct() {
   if (!confirm('\u786E\u5B9A\u8981\u4E0B\u67B6\u8FD9\u4E2A\u5546\u54C1\u5417\uFF1F')) return;
   state.products = state.products.filter(function(p) { return p.id !== currentEditProductId; });
   saveState();
-  hideModal('product-modal');
+  closePopup('product-edit-popup');
   currentEditProductId = null;
   refreshAll();
   showToast('\uD83D\uDDD1\uFE0F \u5546\u54C1\u5DF2\u5220\u9664');
@@ -777,10 +770,67 @@ function switchTab(tabName) {
   if (page) page.scrollTop = 0;
 }
 
-/* ===== 渲染: 首页（任务列表） ===== */
+/* ===== 渲染: 首页 ===== */
 function renderHome() {
-  document.getElementById('task-points').textContent = state.points;
+  document.getElementById('home-points').textContent = state.points;
+  document.getElementById('home-coins').textContent = state.coins;
+  var moodAvg = (state.pet.hunger + state.pet.clean + state.pet.mood + state.pet.energy) / 4;
+  var moods = ['\u6211\u9700\u8981\u7167\u987E...', '\u6709\u70B9\u4E0D\u8212\u670D...', '\u8FD8\u53EF\u4EE5\u5427~', '\u5FC3\u60C5\u4E0D\u9519~', '\u8D85\u7EA7\u5F00\u5FC3\uFF01'];
+  var moodIdx = Math.min(Math.floor(moodAvg / 25), 4);
+  document.getElementById('pet-mood').textContent = moods[moodIdx];
+  document.getElementById('pet-name').textContent = state.pet.name;
+  var lvlInfo = getLevelInfo(calcXP());
+  document.getElementById('pet-level').textContent = 'Lv.' + state.pet.level + ' ' + lvlInfo.title;
+  updateStatusBar('hunger', state.pet.hunger, '#FF8C7A');
+  updateStatusBar('clean', state.pet.clean, '#6BB6E0');
+  updateStatusBar('mood', state.pet.mood, '#FFC857');
+  updateStatusBar('energy', state.pet.energy, '#7BB56A');
+  var completed = state.tasks.filter(function(t) { return t.completed; }).length;
+  document.getElementById('home-task-count').textContent = completed + '/' + state.tasks.length;
+  var taskPoints = state.tasks.filter(function(t) { return t.completed; }).reduce(function(s, t) { return s + t.points; }, 0);
+  document.getElementById('home-task-points').textContent = '+' + taskPoints + ' \u79EF\u5206';
+  document.getElementById('streak-num').textContent = state.streak;
+  var dotsEl = document.getElementById('streak-dots');
+  dotsEl.innerHTML = '';
+  for (var i = 0; i < 7; i++) {
+    var d = document.createElement('div');
+    d.className = 'streak-dot' + (i < state.streak ? ' active' : '');
+    dotsEl.appendChild(d);
+  }
+  // 更新宠物外观状态
+  updatePetAppearance(moodAvg);
+  // 更新在线状态
+  updateOnlineStatus();
+}
 
+function updateStatusBar(id, value, color) {
+  var fill = document.getElementById('bar-' + id + '-fill');
+  var text = document.getElementById('bar-' + id + '-percent');
+  if (fill) { fill.style.width = value + '%'; fill.style.background = color; }
+  if (text) text.textContent = Math.round(value) + '%';
+}
+
+/* ===== 宠物外观随状态变化 ===== */
+function updatePetAppearance(moodAvg) {
+  var cat = document.getElementById('cat');
+  if (!cat) return;
+  // 移除旧状态类
+  cat.classList.remove('pet-sad', 'pet-hungry', 'pet-dirty', 'pet-tired', 'pet-happy');
+  // 饥饿状态
+  if (state.pet.hunger < 25) cat.classList.add('pet-hungry');
+  // 脏状态
+  if (state.pet.clean < 25) cat.classList.add('pet-dirty');
+  // 疲惫状态
+  if (state.pet.energy < 15) cat.classList.add('pet-tired');
+  // 不开心状态
+  if (moodAvg < 30) cat.classList.add('pet-sad');
+  // 非常开心
+  if (moodAvg > 80) cat.classList.add('pet-happy');
+}
+
+/* ===== 渲染: 任务 ===== */
+function renderTasks() {
+  document.getElementById('task-points').textContent = state.points;
   var list = document.getElementById('task-list');
   list.innerHTML = '';
   var showEdit = state.parentMode;
@@ -820,59 +870,6 @@ function renderHome() {
   document.getElementById('summary-completed').textContent = completed + '/' + state.tasks.length;
   document.getElementById('summary-points').textContent = state.tasks.filter(function(t) { return t.completed; }).reduce(function(s, t) { return s + t.points; }, 0);
   document.getElementById('summary-coins').textContent = state.tasks.filter(function(t) { return t.completed; }).reduce(function(s, t) { return s + t.coins; }, 0);
-
-  document.getElementById('streak-num').textContent = state.streak;
-  var dotsEl = document.getElementById('streak-dots');
-  dotsEl.innerHTML = '';
-  for (var i = 0; i < 7; i++) {
-    var d = document.createElement('div');
-    d.className = 'streak-dot' + (i < state.streak ? ' active' : '');
-    dotsEl.appendChild(d);
-  }
-}
-
-function updateStatusBar(id, value, color) {
-  var fill = document.getElementById('bar-' + id + '-fill');
-  var text = document.getElementById('bar-' + id + '-percent');
-  if (fill) { fill.style.width = value + '%'; fill.style.background = color; }
-  if (text) text.textContent = Math.round(value) + '%';
-}
-
-/* ===== 宠物外观随状态变化 ===== */
-function updatePetAppearance(moodAvg) {
-  var cat = document.getElementById('cat');
-  if (!cat) return;
-  // 移除旧状态类
-  cat.classList.remove('pet-sad', 'pet-hungry', 'pet-dirty', 'pet-tired', 'pet-happy');
-  // 饥饿状态
-  if (state.pet.hunger < 25) cat.classList.add('pet-hungry');
-  // 脏状态
-  if (state.pet.clean < 25) cat.classList.add('pet-dirty');
-  // 疲惫状态
-  if (state.pet.energy < 15) cat.classList.add('pet-tired');
-  // 不开心状态
-  if (moodAvg < 30) cat.classList.add('pet-sad');
-  // 非常开心
-  if (moodAvg > 80) cat.classList.add('pet-happy');
-}
-
-/* ===== 渲染: 宠物页 ===== */
-function renderTasks() {
-  document.getElementById('home-points').textContent = state.points;
-  document.getElementById('home-coins').textContent = state.coins;
-  var moodAvg = (state.pet.hunger + state.pet.clean + state.pet.mood + state.pet.energy) / 4;
-  var moods = ['\u6211\u9700\u8981\u7167\u9875...', '\u6709\u70B9\u4E0D\u8212\u670D...', '\u8FD8\u53EF\u4EE5\u5427~', '\u5FC3\u60C5\u4E0D\u9519~', '\u8D85\u7EA7\u5F00\u5FC3\uFF01'];
-  var moodIdx = Math.min(Math.floor(moodAvg / 25), 4);
-  document.getElementById('pet-mood').textContent = moods[moodIdx];
-  document.getElementById('pet-name').textContent = state.pet.name;
-  var lvlInfo = getLevelInfo(calcXP());
-  document.getElementById('pet-level').textContent = 'Lv.' + state.pet.level + ' ' + lvlInfo.title;
-  updateStatusBar('hunger', state.pet.hunger, '#FF8C7A');
-  updateStatusBar('clean', state.pet.clean, '#6BB6E0');
-  updateStatusBar('mood', state.pet.mood, '#FFC857');
-  updateStatusBar('energy', state.pet.energy, '#7BB56A');
-  updatePetAppearance(moodAvg);
-  updateOnlineStatus();
 }
 
 /* ===== 渲染: 商店 ===== */
@@ -948,10 +945,9 @@ function renderProfile() {
   var lvlInfo = getLevelInfo(calcXP());
   document.getElementById('profile-level').textContent = 'Lv.' + state.pet.level + ' ' + lvlInfo.title;
   renderProfileAvatar();
-  document.getElementById('stat-total-tasks').textContent = state.stats.totalTasks;
-  document.getElementById('stat-total-points').textContent = state.stats.totalPoints;
-  document.getElementById('stat-xp').textContent = calcXP();
-  document.getElementById('stat-streak').textContent = state.streak;
+  document.getElementById('stat-tasks').textContent = state.stats.totalTasks;
+  document.getElementById('stat-points').textContent = state.stats.totalPoints;
+  document.getElementById('stat-coins').textContent = state.stats.totalCoins;
 
   // 进度条: 距下一级
   var xp = calcXP();
@@ -972,19 +968,21 @@ function renderProfile() {
     if (xpText2) xpText2.textContent = 'MAX';
   }
 
-  // 家长模式开关状态
-  var toggleBtn = document.getElementById('parent-toggle');
-  if (toggleBtn) toggleBtn.classList.toggle('on', state.parentMode);
-
-  renderPendingSection();
-
   // 兑换记录
   var histList = document.getElementById('history-list');
   histList.innerHTML = '';
+  var allExchanges = state.exchanges.slice().reverse();
+  var showLimit = 3;
+  var displayExchanges = _showFullHistory ? allExchanges : allExchanges.slice(0, showLimit);
+  var hasMore = allExchanges.length > showLimit;
+
+  var moreBtn = document.getElementById('history-more');
+  if (moreBtn) moreBtn.style.display = (hasMore && !_showFullHistory) ? 'inline' : 'none';
+
   if (state.exchanges.length === 0) {
     histList.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-light);font-size:14px;">\u8FD8\u6CA1\u6709\u5151\u6362\u8BB0\u5F55\u54E6~</div>';
   } else {
-    state.exchanges.slice().reverse().forEach(function(ex) {
+    displayExchanges.forEach(function(ex) {
       var item = document.createElement('div');
       item.className = 'history-item';
       var isPending = ex.status === 'pending';
@@ -1003,6 +1001,20 @@ function renderProfile() {
       histList.appendChild(item);
     });
   }
+
+  // 成就徽章
+  renderAchievements();
+
+  // 设置
+  document.getElementById('parent-toggle').classList.toggle('on', state.parentMode);
+  document.getElementById('parent-mode-text').textContent = state.parentMode ? '\u5DF2\u5F00\u542F' : '\u672A\u5F00\u542F';
+  renderPendingSection();
+}
+
+/* ===== 显示全部兑换记录 ===== */
+function showAllHistory() {
+  _showFullHistory = true;
+  renderProfile();
 }
 
 /* ===== 成就徽章渲染 ===== */
@@ -1115,15 +1127,15 @@ function renderPendingSection() {
   var countText = document.getElementById('pending-count-text');
   var list = document.getElementById('pending-list');
 
-  if (badge) badge.textContent = pending.length;
-  if (countText) countText.textContent = pending.length + '\u4EF6\u5F85\u6838\u9500\u5546\u54C1';
+  badge.textContent = pending.length;
+  countText.textContent = pending.length + '\u4EF6\u5F85\u6838\u9500\u5546\u54C1';
 
-  if (!list) return;
   list.innerHTML = '';
   if (pending.length === 0) {
     list.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text-light);font-size:13px;">\u6682\u65E0\u5F85\u6838\u9500\u5546\u54C1~</div>';
   } else {
-    pending.forEach(function(ex) {
+    var displayPending = pending.slice(0, 5);
+    displayPending.forEach(function(ex) {
       list.innerHTML += ''
         + '<div class="pending-item">'
         + '<div class="pending-item-icon">' + ex.emoji + '</div>'
@@ -1134,7 +1146,26 @@ function renderPendingSection() {
         + '<span class="pending-item-action" onclick="viewPendingDetail(\'' + ex.id + '\')">\u67E5\u770B \u203A</span>'
         + '</div>';
     });
+    if (pending.length > 5) {
+      list.innerHTML += '<div onclick="showAllPending()" style="padding:10px;text-align:center;color:var(--text-light);font-size:13px;cursor:pointer">查看全部 ' + pending.length + ' 件待核销 ›</div>';
+    }
   }
+}
+function showAllPending() {
+  var pending = state.exchanges.filter(function(e) { return e.status === 'pending'; });
+  var list = document.getElementById('pending-list');
+  list.innerHTML = '';
+  pending.forEach(function(ex) {
+    list.innerHTML += ''
+      + '<div class="pending-item">'
+      + '<div class="pending-item-icon">' + ex.emoji + '</div>'
+      + '<div class="pending-item-body">'
+      + '<div class="pending-item-name">' + ex.product + '</div>'
+      + '<div class="pending-item-date">' + ex.date + ' \u00B7 <span class="pending-item-code">' + ex.id + '</span></div>'
+      + '</div>'
+      + '<span class="pending-item-action" onclick="viewPendingDetail(\'' + ex.id + '\')">\u67E5\u770B \u203A</span>'
+      + '</div>';
+  });
 }
 
 function viewPendingDetail(exId) {
@@ -1624,88 +1655,6 @@ function updateClock() {
   var h = now.getHours().toString().padStart(2, '0');
   var m = now.getMinutes().toString().padStart(2, '0');
   document.querySelectorAll('.status-time').forEach(function(el) { el.textContent = h + ':' + m; });
-}
-
-/* ===== 通用弹窗 ===== */
-function closeAllModals() {
-  document.getElementById('overlay').classList.remove('show');
-  document.querySelectorAll('.modal.show').forEach(function(m) { m.classList.remove('show'); });
-}
-
-function showModal(id) {
-  document.getElementById('overlay').classList.add('show');
-  document.getElementById(id).classList.add('show');
-}
-
-function hideModal(id) {
-  document.getElementById(id).classList.remove('show');
-  document.getElementById('overlay').classList.remove('show');
-}
-
-/* ===== 名字编辑 ===== */
-function openNameEditor() {
-  document.getElementById('new-pet-name').value = state.pet.name;
-  showModal('name-modal');
-}
-
-function savePetName() {
-  var name = document.getElementById('new-pet-name').value.trim();
-  if (!name) { showToast('\u540D\u5B57\u4E0D\u80FD\u4E3A\u7A7A'); return; }
-  state.pet.name = name.slice(0, 8);
-  saveState();
-  hideModal('name-modal');
-  refreshAll();
-  showToast('\u2705 \u540D\u5B57\u5DF2\u66F4\u65B0');
-}
-
-/* ===== 密码弹窗 ===== */
-function openPasswordSetup() {
-  passwordInput = '';
-  updateSetupDots();
-  var el = document.getElementById('password-modal-title');
-  if (el) el.textContent = '\u8BBE\u7F6E\u5BB6\u957F\u5BC6\u7801';
-  var label = document.getElementById('password-label');
-  if (label) label.textContent = '\u8BF7\u8BBE\u7F6E4\u4F4D\u6570\u5B57\u5BC6\u7801';
-  showModal('password-modal');
-}
-
-function checkPassword() {
-  var pw = document.getElementById('parent-password').value.trim();
-  if (!pw || pw.length < 4) { showToast('\u8BF7\u8F93\u5165\u5B8C\u6574\u76844\u4F4D\u5BC6\u7801'); return; }
-
-  var storedRaw = localStorage.getItem(PASSWORD_KEY);
-  var stored = storedRaw ? JSON.parse(storedRaw) : null;
-
-  if (stored && stored.hash) {
-    // 已有密码 — 验证
-    var inputHash = simpleHash(pw);
-    if (inputHash === stored.hash) {
-      enterParentMode();
-      hideModal('password-modal');
-    } else {
-      showToast('\u274C \u5BC6\u7801\u9519\u8BEF');
-    }
-  } else {
-    // 首次设置密码
-    stored = { hash: simpleHash(pw) };
-    localStorage.setItem(PASSWORD_KEY, JSON.stringify(stored));
-    enterParentMode();
-    hideModal('password-modal');
-    showToast('\u2705 \u5BC6\u7801\u5DF2\u8BBE\u7F6E');
-  }
-}
-
-/* ===== 数据导入导出 ===== */
-function exportData() {
-  exportBackup();
-}
-
-function importData() {
-  var input = document.createElement('input');
-  input.type = 'file';
-  input.accept = '.json';
-  input.onchange = function() { handleBackupFile(input); };
-  input.click();
 }
 
 /* ===== 初始化 ===== */
