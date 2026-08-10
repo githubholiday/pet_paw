@@ -7,7 +7,7 @@
 var STORAGE_KEY = 'pet-app-state';
 var PASSWORD_KEY = 'parent-password';
 var AVATAR_KEY = 'pet-app-avatar';
-var APP_VERSION = '2.1.0';
+var APP_VERSION = '2.1.1';
 var SCHEMA_VERSION = 3;
 
 /* ===== 集中配置 ===== */
