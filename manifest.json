@@ -8,18 +8,13 @@
   "orientation": "portrait",
   "background_color": "#FAF6F0",
   "theme_color": "#FFC857",
+  "categories": ["education", "kids", "lifestyle"],
   "icons": [
     {
-      "src": "icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "icon-192.png",
-      "sizes": "192x192",
+      "src": "icon-512-maskable.png",
+      "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any"
+      "purpose": "maskable"
     },
     {
       "src": "icon-512.png",
@@ -34,10 +29,16 @@
       "purpose": "maskable"
     },
     {
-      "src": "icon-512-maskable.png",
-      "sizes": "512x512",
+      "src": "icon-192.png",
+      "sizes": "192x192",
       "type": "image/png",
-      "purpose": "maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
     }
   ]
 }
