@@ -679,6 +679,25 @@ body {
   50% { transform: rotate(22deg); }
 }
 
+/* ========== Mood-driven appearance (added by JS updatePetAppearance) ========== */
+/* 饥饿：身体偏黄、轻微抖动 */
+.cat.pet-hungry .cat-body { background: #F2C572; }
+.cat.pet-hungry { animation: petShiver 0.5s ease-in-out infinite; }
+@keyframes petShiver {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-1.5px); }
+  75% { transform: translateX(1.5px); }
+}
+/* 脏：整体变灰 + 降低透明度 */
+.cat.pet-dirty { filter: grayscale(0.7) brightness(0.85); }
+/* 疲惫：尾巴下垂、动作迟缓 */
+.cat.pet-tired .cat-tail { transform: rotate(25deg); opacity: 0.7; }
+/* 不开心：耳朵/嘴下垂（复用眼部降低） */
+.cat.pet-sad .cat-eye { height: 4px; border-radius: 4px; }
+.cat.pet-sad .cat-body { background: #C7D8C2; }
+/* 非常开心：发光效果 */
+.cat.pet-happy { filter: drop-shadow(0 0 10px rgba(255,200,87,0.8)); }
+
 /* ===== Status Bars ===== */
 .status-section {
   background: var(--bg-card);
@@ -1458,6 +1477,88 @@ body {
   white-space: nowrap;
 }
 .toast.show { transform: translateX(-50%) translateY(0); }
+
+/* ===== Online Indicator ===== */
+.online-indicator {
+  position: fixed;
+  top: calc(var(--safe-top) + 8px);
+  right: 12px;
+  z-index: 1000;
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  background: rgba(214,58,47,0.85);
+  color: #fff;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(-12px);
+}
+.online-indicator.visible { opacity: 1; transform: translateY(0); }
+
+/* ===== Confetti Canvas ===== */
+.confetti-canvas {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  z-index: 2000;
+}
+
+/* ===== Level Up Popup ===== */
+.popup-levelup {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: 8px 0;
+  font-size: 22px;
+  font-weight: 700;
+}
+.levelup-old { color: var(--text-light); }
+.levelup-new { color: var(--green); }
+.levelup-arrow { color: var(--text-light); }
+
+/* ===== Achievements ===== */
+.achievements-card { padding: 4px 0; }
+.achievements-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 8px;
+}
+.achievement-item {
+  background: #fff;
+  border-radius: 14px;
+  padding: 12px 8px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+.achievement-item.locked { opacity: 0.45; filter: grayscale(0.8); }
+.achievement-emoji { font-size: 28px; }
+.achievement-name { font-size: 12px; margin-top: 4px; font-weight: 600; }
+.achievement-desc { font-size: 10px; color: var(--text-light); margin-top: 2px; }
+
+/* ===== XP Progress ===== */
+.xp-progress {
+  height: 6px;
+  background: #EDEDED;
+  border-radius: 3px;
+  margin-top: 6px;
+  overflow: hidden;
+}
+.xp-progress-bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--green), #A5D78F);
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+.xp-progress-text {
+  font-size: 11px;
+  color: var(--text-light);
+  margin-top: 3px;
+}
 
 /* ===== Parent Mode ===== */
 .parent-toggle {

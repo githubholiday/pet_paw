@@ -4,17 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="小宠打卡">
   <meta name="theme-color" content="#FFC857">
   <meta name="description" content="小朋友的电子宠物打卡养成APP">
 
-  <!-- PWA -->
-  <link rel="manifest" href="manifest.json">
-  <link rel="apple-touch-icon" href="icon.svg">
-
   <!-- Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
 
   <link rel="stylesheet" href="styles.css">
@@ -22,6 +17,10 @@
 </head>
 <body>
 <div id="app">
+
+  <!-- 在线/离线状态指示器 -->
+  <div id="online-indicator" class="online-indicator">🟢 在线</div>
+
 
   <!-- ===== Parent Mode Bar ===== -->
   <div class="parent-bar" id="parent-bar">
@@ -294,6 +293,10 @@
       <div>
         <div class="profile-name" id="profile-name">小图</div>
         <div class="profile-level" id="profile-level">Lv.5 宠物达人</div>
+        <div class="xp-progress">
+          <div class="xp-progress-bar" id="xp-progress-bar"></div>
+        </div>
+        <div class="xp-progress-text" id="xp-progress-text">0 / 100 XP</div>
       </div>
       <button class="profile-edit" onclick="openProfileEditor()">编辑</button>
     </div>
@@ -312,6 +315,15 @@
         <div class="stat-num" id="stat-coins">180</div>
         <div class="stat-label">累计金币</div>
       </div>
+      <div class="stat-item">
+        <div class="stat-num" id="stat-xp">0</div>
+        <div class="stat-label">经验值</div>
+      </div>
+    </div>
+
+    <div class="section-title">🏆 成就</div>
+    <div class="achievements-card">
+      <div class="achievements-grid" id="achievements-container"></div>
     </div>
 
     <div class="section-title">兑换记录</div>
@@ -349,7 +361,7 @@
       <div class="setting-item">
         <div class="setting-icon" style="background:#D9ECF7">ℹ️</div>
         <div class="setting-label">关于</div>
-        <div class="setting-value" id="app-version">v2.0.0</div>
+        <div class="setting-value" id="app-version">v2.1.0</div>
       </div>
       <div class="setting-item">
         <div class="setting-icon" style="background:#E0F0DA">💾</div>
@@ -579,6 +591,24 @@
 
 <!-- ===== Toast ===== -->
 <div class="toast" id="toast"></div>
+
+<!-- ===== Level Up Popup ===== -->
+<div class="popup-overlay" id="levelup-popup">
+  <div class="popup-card">
+    <div class="popup-icon">🎉</div>
+    <div class="popup-title">升级啦！</div>
+    <div class="popup-levelup">
+      <span class="levelup-old" id="levelup-old">Lv.1</span>
+      <span class="levelup-arrow">→</span>
+      <span class="levelup-new" id="levelup-new">Lv.2</span>
+    </div>
+    <div class="popup-desc" id="levelup-title">宠物升到了 Lv.2，解锁新外观！</div>
+    <button class="popup-btn" onclick="closePopup('levelup-popup')">太棒了！</button>
+  </div>
+</div>
+
+<!-- ===== Confetti Canvas ===== -->
+<canvas id="confetti-canvas" class="confetti-canvas"></canvas>
 
 <script src="app.js"></script>
 </body>

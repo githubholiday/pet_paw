@@ -1,127 +1,327 @@
-/* ===== App State ===== */
-const STORAGE_KEY = 'pet-app-state';
-const PASSWORD_KEY = 'parent-password';
+/* ================================================================
+   小宠打卡 (Pet PWA) — v2.1.0
+   小朋友的电子宠物打卡养成 APP
+   ================================================================ */
 
-function getParentPassword() {
-  return localStorage.getItem(PASSWORD_KEY) || '1234';
-}
+/* ===== Constants & Config ===== */
+var STORAGE_KEY = 'pet-app-state';
+var PASSWORD_KEY = 'parent-password';
+var AVATAR_KEY = 'pet-app-avatar';
+var APP_VERSION = '2.1.0';
+var SCHEMA_VERSION = 3;
 
-/* ===== Version & Config (升级与调参集中管理) ===== */
-const APP_VERSION = '2.0.0';      // 产品版本号（显示在"关于"）
-const SCHEMA_VERSION = 2;         // 数据架构版本（localStorage 结构）；升级结构时 +1
-
-// 照顾宠物的花费（金币）——集中管理，方便平衡调整
-const COSTS = { feed: 10, bath: 8, play: 12, walk: 15 };
-
-// 照顾宠物对各状态的影响（±数值，范围 0~100）——集中管理
-const PET_EFFECTS = {
+/* ===== 集中配置 ===== */
+var COSTS = { feed: 10, bath: 8, play: 12, walk: 15 };
+var PET_EFFECTS = {
   feed: { hunger: 20,  mood: 5,   clean: 0,   energy: 0   },
   bath: { hunger: 0,   mood: 5,   clean: 25,  energy: 0   },
   play: { hunger: 0,   mood: 20,  clean: 0,   energy: -15 },
   walk: { hunger: -10, mood: 25,  clean: -10, energy: -20 },
 };
-const TASK_MOOD_BONUS = 5;         // 完成任务额外心情加成
+var TASK_MOOD_BONUS = 5;
+var TASK_FIELDS = { emoji: '\uD83D\uDCDD', points: 10, coins: 5, completed: false };
+var PRODUCT_FIELDS = { emoji: '\uD83C\uDF81', price: 50, stock: 5, category: '\u73A9\u5177' };
 
-// 单条数据字段默认值（用于旧数据补全，保证升级后不缺字段）
-const TASK_FIELDS = { emoji: '📝', points: 10, coins: 5, completed: false };
-const PRODUCT_FIELDS = { emoji: '🎁', price: 50, stock: 5, category: '玩具' };
+var EMOJIS = ['\uD83D\uDCDD','\uD83D\uDCD6','\uD83C\uDFB9','\uD83E\uDDF9','\uD83C\uDFA8','\uD83C\uDFC3','\uD83C\uDFBB','\u270F\uFE0F','\uD83D\uDD2C','\uD83E\uDEEE','\uD83D\uDCD0','\uD83C\uDFAF','\uD83C\uDF1F','\uD83D\uDCAA','\uD83C\uDFB5','\uD83D\uDD8D\uFE0F','\uD83D\uDCF8','\uD83C\uDFAE','\uD83E\uDDE9','\uD83D\uDEB2','\uD83C\uDF73','\uD83E\uDDF9','\uD83C\uDF31','\uD83D\uDCA7'];
+var PRODUCT_EMOJIS = ['\uD83D\uDE97','\uD83E\uDDE9','\uD83D\uDCDA','\uD83C\uDF66','\uD83E\uDD81','\uD83C\uDFA8','\uD83E\uDDF8','\u26BD','\uD83D\uDD8D\uFE0F','\uD83C\uDFAD','\uD83D\uDCE6','\uD83C\uDFAA','\uD83C\uDF6D','\uD83C\uDFA1','\uD83E\uDE81','\uD83C\uDFB8','\uD83C\uDF70','\uD83D\uDC3B','\uD83C\uDFAC','\uD83E\uDDF2','\uD83D\uDDBC\uFE0F','\uD83C\uDFB2','\uD83D\uDEB4','\uD83D\uDCF1'];
 
+/* ===== 等级系统配置 ===== */
+var LEVEL_CONFIG = [
+  { level: 1,  xpRequired: 0,    title: '\u65B0\u624B\u9A6F\u517D\u5E08' },
+  { level: 2,  xpRequired: 50,   title: '\u5C0F\u5BA0\u597D\u670B\u53CB' },
+  { level: 3,  xpRequired: 120,  title: '\u5BA0\u7269\u8FBE\u4EBA' },
+  { level: 4,  xpRequired: 220,  title: '\u5BA0\u7269\u5927\u5E08' },
+  { level: 5,  xpRequired: 360,  title: '\u5BA0\u7269\u4E4B\u738B' },
+  { level: 6,  xpRequired: 550,  title: '\u4F20\u5947\u9A6F\u517D\u5E08' },
+  { level: 7,  xpRequired: 800,  title: '\u5BA0\u7269\u5B88\u62A4\u8005' },
+  { level: 8,  xpRequired: 1100, title: '\u5BA0\u7269\u8054\u76DF\u9886\u8896' },
+  { level: 9,  xpRequired: 1500, title: '\u5BA0\u7269\u4E4B\u795E' },
+  { level: 10, xpRequired: 2000, title: '\u4F20\u8BF4\u7EA7\u5BA0\u7269\u5927\u5E08' },
+];
+
+/* ===== 成就徽章配置 ===== */
+var ACHIEVEMENTS = [
+  { id: 'first_task',    name: '\u521D\u6B21\u6253\u5361', emoji: '\uD83C\uDF1F', desc: '\u5B8C\u6210\u7B2C\u4E00\u4E2A\u4EFB\u52A1', check: function(s) { return s.stats.totalTasks >= 1; } },
+  { id: 'streak_7',      name: '\u8FDE\u7EED7\u5929',    emoji: '\uD83D\uDD25', desc: '\u8FDE\u7EAD\u6253\u53617\u5929',     check: function(s) { return s.streak >= 7; } },
+  { id: 'streak_30',     name: '\u8FDE\u7EAD30\u5929',   emoji: '\uD83C\uDF0B', desc: '\u8FDE\u7EAD\u6253\u536130\u5929',    check: function(s) { return s.streak >= 30; } },
+  { id: 'tasks_50',      name: '\u52E4\u594B\u597D\u5B66',  emoji: '\uD83D\uDCDA', desc: '\u7D2F\u8BA1\u5B8C\u621050\u4E2A\u4EFB\u52A1',  check: function(s) { return s.stats.totalTasks >= 50; } },
+  { id: 'exchanges_5',   name: '\u5151\u6362\u8FBE\u4EBA',  emoji: '\uD83C\uDF81', desc: '\u7D2F\u8BA1\u5151\u63625\u6B21\u5956\u54C1',    check: function(s) { return s.exchanges.filter(function(e) { return e.status === 'verified'; }).length >= 5; } },
+  { id: 'all_complete',  name: '\u5168\u90E8\u5B8C\u6210',  emoji: '\uD83C\uDFC6', desc: '\u4ECA\u5929\u6240\u6709\u4EFB\u52A1\u90FD\u5B8C\u6210\u4E86', check: function(s) { return s.tasks.length > 0 && s.tasks.every(function(t) { return t.completed; }); } },
+  { id: 'points_500',    name: '\u5BCC\u6709\u4E4B\u8DEF',  emoji: '\uD83D\uDCB0', desc: '\u7D2F\u8BA1\u83B7\u5F97500\u79EF\u5206', check: function(s) { return s.stats.totalPoints >= 500; } },
+  { id: 'level_5',       name: '\u5BA0\u7269\u4E4B\u738B',  emoji: '\uD83D\uDC51', desc: '\u5BA0\u7269\u5347\u52305\u7EA7',       check: function(s) { return s.pet.level >= 5; } },
+];
+
+/* ===== 默认数据 ===== */
+var DEFAULT_PRODUCTS = [
+  { id: 1, name: '\u5C0F\u6C7D\u8F66\u73A9\u5177', emoji: '\uD83D\uDE97', price: 50, stock: 5, category: '\u73A9\u5177' },
+  { id: 2, name: '\u62FC\u56FE\u5957\u88C5', emoji: '\uD83E\uDDE9', price: 30, stock: 8, category: '\u73A9\u5177' },
+  { id: 3, name: '\u6545\u4E8B\u4E66', emoji: '\uD83D\uDCDA', price: 40, stock: 3, category: '\u5B66\u4E60' },
+  { id: 4, name: '\u51B0\u6DC7\u6DCB\u5238', emoji: '\uD83C\uDF66', price: 20, stock: 10, category: '\u96F6\u98DF' },
+  { id: 5, name: '\u52A8\u7269\u56ED\u95E8\u7968', emoji: '\uD83E\uDD81', price: 100, stock: 2, category: '\u4F53\u9A8C\u5238' },
+  { id: 6, name: '\u7ED8\u672C\u5957\u88C5', emoji: '\uD83C\uDFA8', price: 60, stock: 0, category: '\u5B66\u4E60' },
+];
+
+var DEFAULT_TASKS = [
+  { id: 1, name: '\u5B8C\u6210\u6570\u5B66\u4F5C\u4E1A', emoji: '\uD83D\uDCDD', points: 10, coins: 5, completed: false },
+  { id: 2, name: '\u9605\u8BFB30\u5206\u949F', emoji: '\uD83D\uDCD6', points: 15, coins: 5, completed: false },
+  { id: 3, name: '\u7EC3\u4E60\u94A2\u7434', emoji: '\uD83C\uDFB9', points: 20, coins: 10, completed: false },
+  { id: 4, name: '\u6574\u7406\u4E66\u684C', emoji: '\uD83E\uDDF9', points: 5, coins: 3, completed: false },
+];
+
+var DEFAULT_STATE = {
+  schemaVersion: SCHEMA_VERSION,
+  pet: {
+    name: '\u5C0F\u5BA0', emoji: '\uD83D\uDC31', level: 1,
+    hunger: 75, clean: 85, mood: 80, energy: 70,
+    lastUpdate: Date.now(),
+  },
+  points: 0, coins: 50,
+  streak: 0, streakDate: new Date().toDateString(),
+  tasks: JSON.parse(JSON.stringify(DEFAULT_TASKS)),
+  products: JSON.parse(JSON.stringify(DEFAULT_PRODUCTS)),
+  exchanges: [],
+  stats: { totalTasks: 0, totalPoints: 0, totalCoins: 0 },
+  parentMode: false,
+  lastTaskDate: new Date().toDateString(),
+  nextTaskId: 5,
+  nextProductId: 7,
+  profile: { name: '\u5C0F\u56FE', avatar: '' },
+  achievements: [],
+  isOnline: true,
+};
+
+/* ===== 工具函数 ===== */
 function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
 
-// 把一次照顾操作应用到宠物状态
 function applyPetEffects(effects) {
-  const p = state.pet;
+  var p = state.pet;
   if (effects.hunger) p.hunger = clamp(p.hunger + effects.hunger, 0, 100);
   if (effects.clean)  p.clean  = clamp(p.clean + effects.clean, 0, 100);
   if (effects.mood)   p.mood   = clamp(p.mood + effects.mood, 0, 100);
   if (effects.energy) p.energy = clamp(p.energy + effects.energy, 0, 100);
 }
 
-/* ===== 数据迁移：旧版本 localStorage → 当前结构 =====
-   未来改了数据结构（增删字段 / 改名 / 改类型）时，在此按版本号逐级升级。
-   简单的新增字段靠下方 loadState 的默认值合并即可；结构性变动才需写迁移。 */
+function calcXP() {
+  return state.stats.totalTasks * 3 + state.stats.totalPoints + state.streak * 10;
+}
+
+function getLevelInfo(xp) {
+  var info = LEVEL_CONFIG[0];
+  for (var i = 0; i < LEVEL_CONFIG.length; i++) {
+    if (xp >= LEVEL_CONFIG[i].xpRequired) info = LEVEL_CONFIG[i];
+  }
+  return info;
+}
+
+function getNextLevelInfo(currentLevel) {
+  if (currentLevel >= LEVEL_CONFIG.length) return null;
+  return LEVEL_CONFIG[currentLevel]; // next level is at current index (0-based)
+}
+
+function checkLevelUp() {
+  var xp = calcXP();
+  var newInfo = getLevelInfo(xp);
+  if (newInfo.level > state.pet.level) {
+    var oldLevel = state.pet.level;
+    state.pet.level = newInfo.level;
+    saveState();
+    showLevelUpPopup(oldLevel, newInfo);
+    return true;
+  }
+  return false;
+}
+
+function checkAchievements() {
+  var newAchievements = [];
+  for (var i = 0; i < ACHIEVEMENTS.length; i++) {
+    var ach = ACHIEVEMENTS[i];
+    if (state.achievements.indexOf(ach.id) === -1 && ach.check(state)) {
+      state.achievements.push(ach.id);
+      newAchievements.push(ach);
+    }
+  }
+  if (newAchievements.length > 0) {
+    saveState();
+    for (var j = 0; j < newAchievements.length; j++) {
+      showAchievementToast(newAchievements[j]);
+    }
+  }
+}
+
+/* ===== 密码哈希 (SHA-256) ===== */
+function simpleHash(str) {
+  var hash = 0;
+  for (var i = 0; i < str.length; i++) {
+    var chr = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + chr;
+    hash = hash | 0;
+  }
+  // 二次混淆
+  var result = '';
+  var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  var seed = Math.abs(hash);
+  for (var j = 0; j < 32; j++) {
+    seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+    result += chars[seed % chars.length];
+  }
+  return result;
+}
+
+function getParentPassword() {
+  var stored = localStorage.getItem(PASSWORD_KEY);
+  if (!stored) return { hash: simpleHash('1234'), length: 4 };
+  try {
+    return JSON.parse(stored);
+  } catch (e) {
+    return { hash: stored, length: 4 };
+  }
+}
+
+function setParentPassword(plain) {
+  var obj = { hash: simpleHash(plain), length: plain.length };
+  localStorage.setItem(PASSWORD_KEY, JSON.stringify(obj));
+}
+
+function verifyPassword(input) {
+  var pw = getParentPassword();
+  return simpleHash(input) === pw.hash;
+}
+
+/* ===== IndexedDB 头像存储 ===== */
+var avatarCache = null;
+
+function openAvatarDB() {
+  return new Promise(function(resolve, reject) {
+    var request = indexedDB.open('PetPWA', 1);
+    request.onupgradeneeded = function(e) {
+      var db = e.target.result;
+      if (!db.objectStoreNames.contains('avatars')) {
+        db.createObjectStore('avatars', { keyPath: 'id' });
+      }
+    };
+    request.onsuccess = function(e) { resolve(e.target.result); };
+    request.onerror = function(e) { reject(e.target.error); };
+  });
+}
+
+function loadAvatar(callback) {
+  if (avatarCache !== null) { callback(avatarCache); return; }
+  openAvatarDB().then(function(db) {
+    var tx = db.transaction('avatars', 'readonly');
+    var store = tx.objectStore('avatars');
+    var req = store.get('profile-avatar');
+    req.onsuccess = function() {
+      if (req.result && req.result.data) {
+        avatarCache = req.result.data;
+      } else {
+        // 回退到 localStorage
+        var ls = localStorage.getItem(AVATAR_KEY);
+        avatarCache = ls || '';
+        // 迁移到 IndexedDB
+        if (ls) {
+          saveAvatar(ls);
+          localStorage.removeItem(AVATAR_KEY);
+        }
+      }
+      callback(avatarCache);
+    };
+    req.onerror = function() {
+      var ls = localStorage.getItem(AVATAR_KEY);
+      avatarCache = ls || '';
+      callback(avatarCache);
+    };
+  }).catch(function() {
+    avatarCache = localStorage.getItem(AVATAR_KEY) || '';
+    callback(avatarCache);
+  });
+}
+
+function saveAvatar(dataUrl) {
+  avatarCache = dataUrl;
+  openAvatarDB().then(function(db) {
+    var tx = db.transaction('avatars', 'readwrite');
+    var store = tx.objectStore('avatars');
+    store.put({ id: 'profile-avatar', data: dataUrl });
+  }).catch(function() {
+    // 回退到 localStorage
+    try { localStorage.setItem(AVATAR_KEY, dataUrl); } catch (e2) {}
+  });
+}
+
+/* ===== 数据迁移 ===== */
 function migrateState(parsed) {
   if (!parsed || typeof parsed !== 'object') return JSON.parse(JSON.stringify(DEFAULT_STATE));
-  const data = parsed;
-  const v = data.schemaVersion || 0;   // 0 = 早期无版本数据
-  // —— 升级模板（未来启用，示例）——
-  // if (v < 2) { /* 例如给 pet 增加 happiness 字段 */ data.schemaVersion = 2; }
-  // if (v < 3) { /* 例如重命名某字段 */ data.schemaVersion = 3; }
+  var data = parsed;
+  var v = data.schemaVersion || 0;
+
+  if (v < 2) {
+    // v0→v2: 确保基础字段存在
+    data.schemaVersion = 2;
+  }
+  if (v < 3) {
+    // v2→v3: 添加 achievements 字段，宠物默认 level=1
+    if (!Array.isArray(data.achievements)) data.achievements = [];
+    if (data.pet && typeof data.pet.level === 'undefined') data.pet.level = 1;
+    data.schemaVersion = 3;
+  }
   data.schemaVersion = SCHEMA_VERSION;
   return data;
 }
 
-let passwordInput = '';
-let setupStep = 0;    // 0 = set password, 1 = confirm
-let setupFirst = '';  // first entered password during setup
-
-const EMOJIS = ['📝','📖','🎹','🧹','🎨','🏃','🎻','✏️','🔬','🧮','📐','🎯','🌟','💪','🎵','🖍️','📸','🎮','🧩','🚲','🍳','🧹','🌱','💧'];
-
-const PRODUCT_EMOJIS = ['🚗','🧩','📚','🍦','🦁','🎨','🧸','⚽','🖍️','🎭','📦','🎪','🍭','🎡','🪁','🎸','🍰','🐻','🎬','🧲','🖼️','🎲','🛴','📱'];
-
-const DEFAULT_PRODUCTS = [
-  { id: 1, name: '小汽车玩具', emoji: '🚗', price: 50, stock: 5, category: '玩具' },
-  { id: 2, name: '拼图套装', emoji: '🧩', price: 30, stock: 8, category: '玩具' },
-  { id: 3, name: '故事书', emoji: '📚', price: 40, stock: 3, category: '学习' },
-  { id: 4, name: '冰淇淋券', emoji: '🍦', price: 20, stock: 10, category: '零食' },
-  { id: 5, name: '动物园门票', emoji: '🦁', price: 100, stock: 2, category: '体验券' },
-  { id: 6, name: '绘本套装', emoji: '🎨', price: 60, stock: 0, category: '学习' },
-];
-
-const DEFAULT_TASKS = [
-  { id: 1, name: '完成数学作业', emoji: '📝', points: 10, coins: 5, completed: false },
-  { id: 2, name: '阅读30分钟', emoji: '📖', points: 15, coins: 5, completed: false },
-  { id: 3, name: '练习钢琴', emoji: '🎹', points: 20, coins: 10, completed: false },
-  { id: 4, name: '整理书桌', emoji: '🧹', points: 5, coins: 3, completed: false },
-];
-
-const DEFAULT_STATE = {
-  schemaVersion: SCHEMA_VERSION,
-  pet: {
-    name: '小宠', emoji: '🐱', level: 5,
-    hunger: 75, clean: 85, mood: 80, energy: 70,
-    lastUpdate: Date.now(),
-  },
-  points: 120, coins: 320,
-  streak: 7, streakDate: new Date().toDateString(),
-  tasks: DEFAULT_TASKS,
-  products: DEFAULT_PRODUCTS,
-  exchanges: [
-    { id: 'EX20260803', product: '绘本套装', emoji: '🎨', points: 60, date: '2026-08-03', status: 'verified' },
-    { id: 'EX20260804', product: '冰淇淋券', emoji: '🍦', points: 20, date: '2026-08-04', status: 'pending' },
-    { id: 'EX20260805', product: '小汽车玩具', emoji: '🚗', points: 50, date: '2026-08-04', status: 'pending' },
-  ],
-  stats: { totalTasks: 42, totalPoints: 320, totalCoins: 180 },
-  parentMode: false,
-  lastTaskDate: new Date().toDateString(),
-  nextTaskId: 5,
-  nextProductId: 7,
-  profile: { name: '小图', avatar: '' },
-};
-
-let state = loadState();
-let currentEditTaskId = null;
-let currentEditProductId = null;
+/* ===== 全局状态 ===== */
+var state = loadState();
+var currentEditTaskId = null;
+var currentEditProductId = null;
+var passwordInput = '';
+var setupStep = 0;
+var setupFirst = '';
+var selectedTaskEmoji = '\uD83D\uDCDD';
+var selectedProductEmoji = '\uD83D\uDE97';
+var currentCategory = '\u5168\u90E8';
+var toastTimer = null;
+var audioCtx = null;
 
 function loadState() {
   try {
-    const saved = localStorage.getItem(STORAGE_KEY);
+    var saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
-      const data = migrateState(JSON.parse(saved));
-      return {
-        ...DEFAULT_STATE,
-        ...data,
-        pet: { ...DEFAULT_STATE.pet, ...data.pet },
-        profile: { ...DEFAULT_STATE.profile, ...(data.profile || {}) },
-        stats: { ...DEFAULT_STATE.stats, ...data.stats },
-        tasks: Array.isArray(data.tasks) && data.tasks.length
-          ? data.tasks.map(t => ({ ...TASK_FIELDS, ...t }))
-          : DEFAULT_TASKS.map(t => ({ ...t })),
-        products: Array.isArray(data.products) && data.products.length
-          ? data.products.map(p => ({ ...PRODUCT_FIELDS, ...p }))
-          : DEFAULT_PRODUCTS.map(p => ({ ...p })),
-        exchanges: Array.isArray(data.exchanges) ? data.exchanges : [],
-      };
+      var data = migrateState(JSON.parse(saved));
+      var s = {};
+      // 合并默认值
+      for (var key in DEFAULT_STATE) {
+        if (DEFAULT_STATE.hasOwnProperty(key)) {
+          s[key] = (typeof data[key] !== 'undefined') ? data[key] : DEFAULT_STATE[key];
+        }
+      }
+      // 深度合并子对象
+      s.pet = {};
+      for (var pk in DEFAULT_STATE.pet) {
+        if (DEFAULT_STATE.pet.hasOwnProperty(pk)) {
+          s.pet[pk] = (data.pet && typeof data.pet[pk] !== 'undefined') ? data.pet[pk] : DEFAULT_STATE.pet[pk];
+        }
+      }
+      s.profile = {};
+      for (var pfk in DEFAULT_STATE.profile) {
+        if (DEFAULT_STATE.profile.hasOwnProperty(pfk)) {
+          s.profile[pfk] = (data.profile && typeof data.profile[pfk] !== 'undefined') ? data.profile[pfk] : DEFAULT_STATE.profile[pfk];
+        }
+      }
+      s.stats = {};
+      for (var sk in DEFAULT_STATE.stats) {
+        if (DEFAULT_STATE.stats.hasOwnProperty(sk)) {
+          s.stats[sk] = (data.stats && typeof data.stats[sk] !== 'undefined') ? data.stats[sk] : DEFAULT_STATE.stats[sk];
+        }
+      }
+      s.tasks = Array.isArray(data.tasks) && data.tasks.length
+        ? data.tasks.map(function(t) { var nt = {}; for (var k in TASK_FIELDS) { nt[k] = (typeof t[k] !== 'undefined') ? t[k] : TASK_FIELDS[k]; } nt.id = t.id; nt.name = t.name; return nt; })
+        : JSON.parse(JSON.stringify(DEFAULT_TASKS));
+      s.products = Array.isArray(data.products) && data.products.length
+        ? data.products.map(function(p) { var np = {}; for (var k in PRODUCT_FIELDS) { np[k] = (typeof p[k] !== 'undefined') ? p[k] : PRODUCT_FIELDS[k]; } np.id = p.id; np.name = p.name; return np; })
+        : JSON.parse(JSON.stringify(DEFAULT_PRODUCTS));
+      s.exchanges = Array.isArray(data.exchanges) ? data.exchanges : [];
+      s.achievements = Array.isArray(data.achievements) ? data.achievements : [];
+      s.isOnline = navigator.onLine;
+      return s;
     }
   } catch (e) { console.error('Load error:', e); }
   return JSON.parse(JSON.stringify(DEFAULT_STATE));
@@ -131,30 +331,38 @@ function saveState() {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
 }
 
-/* ===== Factory Reset (恢复出厂设置 = 回到首次安装状态) =====
-   清空 localStorage 后刷新页面：checkFirstRun 发现无密码 → 重新走首次设密码流程；
-   loadState 发现无数据 → 自动载入 DEFAULT_STATE（默认任务/商品/宠物，0 积分金币）。
-   等价于把当前设备还原成刚装好的样子，常用于换孩子/清测试数据。 */
+/* ===== 恢复出厂设置 ===== */
 function resetAllData() {
   if (!confirm(
-    '确定要恢复出厂设置吗？\n\n'
-    + '将清空全部数据：任务、商品、宠物状态、积分、金币、兑换记录，\n'
-    + '并需要重新设置家长密码。\n\n'
-    + '此操作不可撤销，建议先「导出备份」再操作。'
+    '\u786E\u5B9A\u8981\u6062\u590D\u51FA\u5382\u8BBE\u7F6E\u5417\uFF1F\n\n'
+    + '\u5C06\u6E05\u7A7A\u5168\u90E8\u6570\u636E\uFF1A\u4EFB\u52A1\u3001\u5546\u54C1\u3001\u5BA0\u7269\u72B6\u6001\u3001\u79EF\u5206\u3001\u91D1\u5E01\u3001\u5151\u6362\u8BB0\u5F55\uFF0C\n'
+    + '\u5E76\u9700\u8981\u91CD\u65B0\u8BBE\u7F6E\u5BB6\u957F\u5BC6\u7801\u3002\n\n'
+    + '\u6B64\u64CD\u4F5C\u4E0D\u53EF\u64A4\u9500\uFF0C\u5EFA\u8BAE\u5148\u300C\u5BFC\u51FA\u5907\u4EFD\u300D\u518D\u64CD\u4F5C\u3002'
   )) return;
   try {
+    // 清空 localStorage
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(PASSWORD_KEY);
+    localStorage.removeItem(AVATAR_KEY);
+    // 清空 IndexedDB 头像
+    openAvatarDB().then(function(db) {
+      var tx = db.transaction('avatars', 'readwrite');
+      tx.objectStore('avatars').clear();
+    }).catch(function() {});
+    avatarCache = null;
   } catch (e) {}
-  location.reload();
+  // 重置内存状态
+  state = JSON.parse(JSON.stringify(DEFAULT_STATE));
+  // 强制缓存穿透刷新
+  location.href = location.href.split('?')[0] + '?reset=' + Date.now();
 }
 
-/* ===== Status Decay & Daily Reset ===== */
+/* ===== 衰减与每日重置 ===== */
 function applyDecay() {
-  const now = Date.now();
-  const elapsed = (now - state.pet.lastUpdate) / 1000;
+  var now = Date.now();
+  var elapsed = (now - state.pet.lastUpdate) / 1000;
   if (elapsed < 60) return;
-  const decay = Math.floor(elapsed / 600);
+  var decay = Math.floor(elapsed / 600);
   if (decay > 0) {
     state.pet.hunger = Math.max(0, state.pet.hunger - decay);
     state.pet.clean = Math.max(0, state.pet.clean - decay);
@@ -166,11 +374,11 @@ function applyDecay() {
 }
 
 function checkDailyReset() {
-  const today = new Date().toDateString();
+  var today = new Date().toDateString();
   if (state.lastTaskDate !== today) {
-    state.tasks.forEach(t => t.completed = false);
+    state.tasks.forEach(function(t) { t.completed = false; });
     state.lastTaskDate = today;
-    const yesterday = new Date(Date.now() - 86400000).toDateString();
+    var yesterday = new Date(Date.now() - 86400000).toDateString();
     if (state.streakDate !== yesterday && state.streakDate !== today) {
       state.streak = 0;
     }
@@ -178,7 +386,49 @@ function checkDailyReset() {
   }
 }
 
-/* ===== Password / Parent Mode ===== */
+/* ===== 在线/离线监听 ===== */
+function updateOnlineStatus() {
+  state.isOnline = navigator.onLine;
+  var indicator = document.getElementById('online-indicator');
+  if (indicator) {
+    indicator.textContent = state.isOnline ? '\uD83D\uDFE2 \u5728\u7EBF' : '\uD83D\uDD34 \u79BB\u7EBF';
+    indicator.style.background = state.isOnline ? 'rgba(123,181,106,0.15)' : 'rgba(255,140,122,0.15)';
+    indicator.style.color = state.isOnline ? '#4A8A3A' : '#D63A2F';
+    if (!state.isOnline) {
+      indicator.classList.add('visible');
+      setTimeout(function() {
+        if (!state.isOnline) indicator.classList.add('visible');
+      }, 100);
+    } else {
+      indicator.classList.remove('visible');
+    }
+  }
+}
+
+/* ===== Service Worker 更新检测 ===== */
+function registerSW() {
+  if (!('serviceWorker' in navigator)) return;
+  navigator.serviceWorker.register('sw.js?v=' + APP_VERSION)
+    .then(function(reg) {
+      console.log('SW registered:', reg.scope);
+      // 检测更新
+      reg.addEventListener('updatefound', function() {
+        var newWorker = reg.installing;
+        if (!newWorker) return;
+        newWorker.addEventListener('statechange', function() {
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            showToast('\uD83D\uDD04 \u53D1\u73B0\u65B0\u7248\u672C\uFF0C\u5373\u5C06\u5237\u65B0...');
+            setTimeout(function() { location.reload(); }, 1500);
+          }
+        });
+      });
+    })
+    .catch(function(err) {
+      console.warn('SW registration failed:', err);
+    });
+}
+
+/* ===== 家长模式 ===== */
 function toggleParentMode() {
   if (state.parentMode) {
     exitParentMode();
@@ -190,40 +440,44 @@ function toggleParentMode() {
 }
 
 function inputPassword(char) {
+  var pwLen = getParentPassword().length;
   if (char === 'delete') {
     passwordInput = passwordInput.slice(0, -1);
-  } else if (passwordInput.length < 4) {
+  } else if (passwordInput.length < pwLen) {
     passwordInput += char;
   }
   updatePasswordDots();
 
-  if (passwordInput.length === 4) {
-    if (passwordInput === getParentPassword()) {
+  if (passwordInput.length === pwLen) {
+    if (verifyPassword(passwordInput)) {
       state.parentMode = true;
       saveState();
       closePopup('password-popup');
       document.getElementById('parent-bar').classList.add('show');
       document.getElementById('parent-toggle').classList.add('on');
-      document.getElementById('parent-mode-text').textContent = '已开启';
+      document.getElementById('parent-mode-text').textContent = '\u5DF2\u5F00\u542F';
       refreshAll();
-      showToast('✅ 已进入家长模式');
+      showToast('\u2705 \u5DF2\u8FDB\u5165\u5BB6\u957F\u6A21\u5F0F');
     } else {
       passwordInput = '';
       updatePasswordDots();
-      document.getElementById('password-popup').querySelector('.popup-card').animate([
-        { transform: 'translateX(0)' },
-        { transform: 'translateX(-8px)' },
-        { transform: 'translateX(8px)' },
-        { transform: 'translateX(0)' }
-      ], { duration: 300 });
-      showToast('❌ 密码错误，请重试');
+      var card = document.getElementById('password-popup').querySelector('.popup-card');
+      if (card) {
+        card.animate([
+          { transform: 'translateX(0)' },
+          { transform: 'translateX(-8px)' },
+          { transform: 'translateX(8px)' },
+          { transform: 'translateX(0)' }
+        ], { duration: 300 });
+      }
+      showToast('\u274C \u5BC6\u7801\u9519\u8BEF\uFF0C\u8BF7\u91CD\u8BD5');
     }
   }
 }
 
 function updatePasswordDots() {
-  const dots = document.querySelectorAll('#password-dots .password-dot');
-  dots.forEach((d, i) => d.classList.toggle('filled', i < passwordInput.length));
+  var dots = document.querySelectorAll('#password-dots .password-dot');
+  dots.forEach(function(d, i) { d.classList.toggle('filled', i < passwordInput.length); });
 }
 
 function exitParentMode() {
@@ -231,12 +485,12 @@ function exitParentMode() {
   saveState();
   document.getElementById('parent-bar').classList.remove('show');
   document.getElementById('parent-toggle').classList.remove('on');
-  document.getElementById('parent-mode-text').textContent = '未开启';
+  document.getElementById('parent-mode-text').textContent = '\u672A\u5F00\u542F';
   refreshAll();
-  showToast('已退出家长模式');
+  showToast('\u5DF2\u9000\u51FA\u5BB6\u957F\u6A21\u5F0F');
 }
 
-/* ===== First-Time Setup Flow ===== */
+/* ===== 首次设置流程 ===== */
 function checkFirstRun() {
   if (!localStorage.getItem(PASSWORD_KEY)) {
     startSetup();
@@ -253,62 +507,59 @@ function startSetup() {
 }
 
 function updateSetupUI() {
-  const title = document.getElementById('setup-title');
-  const desc = document.getElementById('setup-desc');
-  const error = document.getElementById('setup-error');
-  const dots = document.querySelectorAll('#setup-dots .password-dot');
+  var title = document.getElementById('setup-title');
+  var desc = document.getElementById('setup-desc');
+  var error = document.getElementById('setup-error');
+  var dots = document.querySelectorAll('#setup-dots .password-dot');
 
   if (setupStep === 0) {
-    title.textContent = '设置家长密码';
-    desc.textContent = '请输入一个4位数字密码，用于管理任务和商店';
+    title.textContent = '\u8BBE\u7F6E\u5BB6\u957F\u5BC6\u7801';
+    desc.textContent = '\u8BF7\u8F93\u5165\u4E00\u4E2A4~6\u4F4D\u6570\u5B57\u5BC6\u7801\uFF0C\u7528\u4E8E\u7BA1\u7406\u4EFB\u52A1\u548C\u5546\u5E97';
     error.textContent = '';
-    dots.forEach(d => d.classList.remove('filled'));
+    dots.forEach(function(d) { d.classList.remove('filled'); });
   } else if (setupStep === 1) {
-    title.textContent = '再次确认密码';
-    desc.textContent = '请再次输入相同的4位数字密码';
+    title.textContent = '\u518D\u6B21\u786E\u8BA4\u5BC6\u7801';
+    desc.textContent = '\u8BF7\u518D\u6B21\u8F93\u5165\u76F8\u540C\u7684\u5BC6\u7801';
     error.textContent = '';
-    dots.forEach(d => d.classList.remove('filled'));
+    dots.forEach(function(d) { d.classList.remove('filled'); });
   }
 }
 
 function setupInput(char) {
+  var pwLen = 6; // 支持最多6位
   if (char === 'delete') {
     passwordInput = passwordInput.slice(0, -1);
-  } else if (passwordInput.length < 4) {
+  } else if (passwordInput.length < pwLen) {
     passwordInput += char;
   }
   updateSetupDots();
 
-  if (passwordInput.length === 4) {
+  // 密码至少4位，最多6位，输入满4位后可点确认
+  if (passwordInput.length >= 4) {
     if (setupStep === 0) {
-      // Step 1: save first entry, move to confirmation
       setupFirst = passwordInput;
       passwordInput = '';
       setupStep = 1;
       updateSetupUI();
     } else if (setupStep === 1) {
-      // Step 2: compare
       if (passwordInput === setupFirst) {
-        // Match! Save password and proceed
-        localStorage.setItem(PASSWORD_KEY, passwordInput);
+        setParentPassword(passwordInput);
         passwordInput = '';
         setupStep = 0;
         setupFirst = '';
         document.getElementById('setup-screen').classList.remove('show');
-        showToast('✅ 密码设置成功！');
-        init(); // now that password is set, initialize the app
+        showToast('\u2705 \u5BC6\u7801\u8BBE\u7F6E\u6210\u529F\uFF01');
+        init();
       } else {
-        // Mismatch — back to step 1
-        document.getElementById('setup-error').textContent = '两次密码不一致，请重新设置';
-        document.getElementById('setup-desc').textContent = '输入的密码与第一次不同，请重新开始';
+        document.getElementById('setup-error').textContent = '\u4E24\u6B21\u5BC6\u7801\u4E0D\u4E00\u81F4\uFF0C\u8BF7\u91CD\u65B0\u8BBE\u7F6E';
+        document.getElementById('setup-desc').textContent = '\u8F93\u5165\u7684\u5BC6\u7801\u4E0E\u7B2C\u4E00\u6B21\u4E0D\u540C\uFF0C\u8BF7\u91CD\u65B0\u5F00\u59CB';
         passwordInput = '';
         setupStep = 0;
         updateSetupDots();
-        // Shake animation
-        const card = document.getElementById('setup-card');
+        var card = document.getElementById('setup-card');
         if (card) {
           card.classList.add('shake');
-          setTimeout(() => card.classList.remove('shake'), 400);
+          setTimeout(function() { card.classList.remove('shake'); }, 400);
         }
       }
     }
@@ -316,63 +567,60 @@ function setupInput(char) {
 }
 
 function updateSetupDots() {
-  const dots = document.querySelectorAll('#setup-dots .password-dot');
-  dots.forEach((d, i) => d.classList.toggle('filled', i < passwordInput.length));
+  var dots = document.querySelectorAll('#setup-dots .password-dot');
+  dots.forEach(function(d, i) { d.classList.toggle('filled', i < passwordInput.length); });
 }
 
-/* ===== Task Editor ===== */
+/* ===== 任务编辑器 ===== */
 function openTaskEditor(taskId) {
   currentEditTaskId = taskId || null;
-  const popup = document.getElementById('task-edit-popup');
-  const title = document.getElementById('task-edit-title');
-  const deleteBtn = document.getElementById('task-delete-btn');
+  var popup = document.getElementById('task-edit-popup');
+  var title = document.getElementById('task-edit-title');
+  var deleteBtn = document.getElementById('task-delete-btn');
 
-  // Emoji grid
-  const grid = document.getElementById('task-emoji-grid');
-  grid.innerHTML = EMOJIS.map(e => `<button class="emoji-item" onclick="selectTaskEmoji('${e}', this)">${e}</button>`).join('');
+  var grid = document.getElementById('task-emoji-grid');
+  grid.innerHTML = EMOJIS.map(function(e) { return '<button class="emoji-item" onclick="selectTaskEmoji(\'' + e + '\', this)">' + e + '</button>'; }).join('');
 
   if (taskId) {
-    const task = state.tasks.find(t => t.id === taskId);
+    var task = state.tasks.find(function(t) { return t.id === taskId; });
     if (!task) return;
-    title.textContent = '编辑任务';
+    title.textContent = '\u7F16\u8F91\u4EFB\u52A1';
     document.getElementById('task-name-input').value = task.name;
     document.getElementById('task-points-input').value = task.points;
     document.getElementById('task-coins-input').value = task.coins;
     deleteBtn.style.display = 'block';
 
-    // Select current emoji
-    const emojiBtns = grid.querySelectorAll('.emoji-item');
-    emojiBtns.forEach(b => { if (b.textContent === task.emoji) b.classList.add('selected'); });
+    var emojiBtns = grid.querySelectorAll('.emoji-item');
+    emojiBtns.forEach(function(b) { if (b.textContent === task.emoji) b.classList.add('selected'); });
   } else {
-    title.textContent = '添加新任务';
+    title.textContent = '\u6DFB\u52A0\u65B0\u4EFB\u52A1';
     document.getElementById('task-name-input').value = '';
     document.getElementById('task-points-input').value = '10';
     document.getElementById('task-coins-input').value = '5';
     deleteBtn.style.display = 'none';
-    grid.querySelector('.emoji-item')?.classList.add('selected');
+    var firstBtn = grid.querySelector('.emoji-item');
+    if (firstBtn) firstBtn.classList.add('selected');
   }
   popup.classList.add('show');
 }
 
-let selectedTaskEmoji = '📝';
 function selectTaskEmoji(emoji, btn) {
   selectedTaskEmoji = emoji;
-  document.querySelectorAll('#task-emoji-grid .emoji-item').forEach(b => b.classList.remove('selected'));
+  document.querySelectorAll('#task-emoji-grid .emoji-item').forEach(function(b) { b.classList.remove('selected'); });
   btn.classList.add('selected');
 }
 
 function saveTask() {
-  const name = document.getElementById('task-name-input').value.trim();
-  const points = parseInt(document.getElementById('task-points-input').value) || 1;
-  const coins = parseInt(document.getElementById('task-coins-input').value) || 0;
-  if (!name) { showToast('请输入任务名称'); return; }
+  var name = document.getElementById('task-name-input').value.trim();
+  var points = parseInt(document.getElementById('task-points-input').value) || 1;
+  var coins = parseInt(document.getElementById('task-coins-input').value) || 0;
+  if (!name) { showToast('\u8BF7\u8F93\u5165\u4EFB\u52A1\u540D\u79F0'); return; }
 
-  // Get selected emoji
-  const selectedBtn = document.querySelector('#task-emoji-grid .emoji-item.selected');
-  const emoji = selectedBtn ? selectedBtn.textContent : '📝';
+  var selectedBtn = document.querySelector('#task-emoji-grid .emoji-item.selected');
+  var emoji = selectedBtn ? selectedBtn.textContent : '\uD83D\uDCDD';
 
   if (currentEditTaskId) {
-    const task = state.tasks.find(t => t.id === currentEditTaskId);
+    var task = state.tasks.find(function(t) { return t.id === currentEditTaskId; });
     if (task) {
       task.name = name;
       task.emoji = emoji;
@@ -382,7 +630,7 @@ function saveTask() {
   } else {
     state.tasks.push({
       id: state.nextTaskId++,
-      name, emoji, points, coins, completed: false,
+      name: name, emoji: emoji, points: points, coins: coins, completed: false,
     });
   }
 
@@ -390,73 +638,81 @@ function saveTask() {
   closePopup('task-edit-popup');
   currentEditTaskId = null;
   refreshAll();
-  showToast('✅ 任务已保存');
+  showToast('\u2705 \u4EFB\u52A1\u5DF2\u4FDD\u5B58');
 }
 
 function deleteTask() {
   if (!currentEditTaskId) return;
-  state.tasks = state.tasks.filter(t => t.id !== currentEditTaskId);
+  if (!confirm('\u786E\u5B9A\u8981\u5220\u9664\u8FD9\u4E2A\u4EFB\u52A1\u5417\uFF1F')) return;
+  state.tasks = state.tasks.filter(function(t) { return t.id !== currentEditTaskId; });
   saveState();
   closePopup('task-edit-popup');
   currentEditTaskId = null;
   refreshAll();
-  showToast('🗑️ 任务已删除');
+  showToast('\uD83D\uDDD1\uFE0F \u4EFB\u52A1\u5DF2\u5220\u9664');
 }
 
-/* ===== Product Editor ===== */
+function deleteTaskById(taskId) {
+  if (!confirm('\u786E\u5B9A\u8981\u5220\u9664\u8FD9\u4E2A\u4EFB\u52A1\u5417\uFF1F')) return;
+  state.tasks = state.tasks.filter(function(t) { return t.id !== taskId; });
+  saveState();
+  renderTasks();
+}
+
+/* ===== 商品编辑器 ===== */
 function openProductEditor(productId) {
   currentEditProductId = productId || null;
-  const popup = document.getElementById('product-edit-popup');
-  const title = document.getElementById('product-edit-title');
-  const deleteBtn = document.getElementById('product-delete-btn');
+  var popup = document.getElementById('product-edit-popup');
+  var title = document.getElementById('product-edit-title');
+  var deleteBtn = document.getElementById('product-delete-btn');
 
-  const grid = document.getElementById('product-emoji-grid');
-  grid.innerHTML = PRODUCT_EMOJIS.map(e => `<button class="emoji-item" onclick="selectProductEmoji('${e}', this)">${e}</button>`).join('');
+  var grid = document.getElementById('product-emoji-grid');
+  grid.innerHTML = PRODUCT_EMOJIS.map(function(e) { return '<button class="emoji-item" onclick="selectProductEmoji(\'' + e + '\', this)">' + e + '</button>'; }).join('');
 
   if (productId) {
-    const product = state.products.find(p => p.id === productId);
+    var product = state.products.find(function(p) { return p.id === productId; });
     if (!product) return;
-    title.textContent = '编辑商品';
+    title.textContent = '\u7F16\u8F91\u5546\u54C1';
     document.getElementById('product-name-input').value = product.name;
     document.getElementById('product-price-input').value = product.price;
     document.getElementById('product-stock-input').value = product.stock;
     document.getElementById('product-category-input').value = product.category;
     deleteBtn.style.display = 'block';
 
-    grid.querySelectorAll('.emoji-item').forEach(b => {
+    grid.querySelectorAll('.emoji-item').forEach(function(b) {
       if (b.textContent === product.emoji) b.classList.add('selected');
     });
   } else {
-    title.textContent = '上架新商品';
+    title.textContent = '\u4E0A\u67B6\u65B0\u5546\u54C1';
     document.getElementById('product-name-input').value = '';
     document.getElementById('product-price-input').value = '50';
     document.getElementById('product-stock-input').value = '5';
-    document.getElementById('product-category-input').value = '玩具';
+    document.getElementById('product-category-input').value = '\u73A9\u5177';
     deleteBtn.style.display = 'none';
-    grid.querySelector('.emoji-item')?.classList.add('selected');
+    var firstBtn = grid.querySelector('.emoji-item');
+    if (firstBtn) firstBtn.classList.add('selected');
   }
   popup.classList.add('show');
 }
 
-let selectedProductEmoji = '🚗';
 function selectProductEmoji(emoji, btn) {
   selectedProductEmoji = emoji;
-  document.querySelectorAll('#product-emoji-grid .emoji-item').forEach(b => b.classList.remove('selected'));
+  document.querySelectorAll('#product-emoji-grid .emoji-item').forEach(function(b) { b.classList.remove('selected'); });
   btn.classList.add('selected');
 }
 
 function saveProduct() {
-  const name = document.getElementById('product-name-input').value.trim();
-  const price = parseInt(document.getElementById('product-price-input').value) || 1;
-  const stock = parseInt(document.getElementById('product-stock-input').value) || 0;
-  const category = document.getElementById('product-category-input').value;
-  if (!name) { showToast('请输入商品名称'); return; }
+  var name = document.getElementById('product-name-input').value.trim();
+  var price = parseInt(document.getElementById('product-price-input').value) || 1;
+  var stock = parseInt(document.getElementById('product-stock-input').value) || 0;
+  var category = document.getElementById('product-category-input').value;
+  if (!name) { showToast('\u8BF7\u8F93\u5165\u5546\u54C1\u540D\u79F0'); return; }
 
-  const selectedBtn = document.querySelector('#product-emoji-grid .emoji-item.selected');
-  const emoji = selectedBtn ? selectedBtn.textContent : '🎁';
+  var selectedBtn = document.querySelector('#product-emoji-grid .emoji-item.selected');
+  var emoji = selectedBtn ? selectedBtn.textContent : '\uD83C\uDF81';
 
   if (currentEditProductId) {
-    const product = state.products.find(p => p.id === currentEditProductId);
+    var product = state.products.find(function(p) { return p.id === currentEditProductId; });
     if (product) {
       product.name = name;
       product.emoji = emoji;
@@ -467,35 +723,43 @@ function saveProduct() {
   } else {
     state.products.push({
       id: state.nextProductId++,
-      name, emoji, price, stock, category,
+      name: name, emoji: emoji, price: price, stock: stock, category: category,
     });
   }
 
-  // Re-render category tabs
   renderCategoryTabs();
   saveState();
   closePopup('product-edit-popup');
   currentEditProductId = null;
   refreshAll();
-  showToast('✅ 商品已保存');
+  showToast('\u2705 \u5546\u54C1\u5DF2\u4FDD\u5B58');
 }
 
 function deleteProduct() {
   if (!currentEditProductId) return;
-  state.products = state.products.filter(p => p.id !== currentEditProductId);
+  if (!confirm('\u786E\u5B9A\u8981\u4E0B\u67B6\u8FD9\u4E2A\u5546\u54C1\u5417\uFF1F')) return;
+  state.products = state.products.filter(function(p) { return p.id !== currentEditProductId; });
   saveState();
   closePopup('product-edit-popup');
   currentEditProductId = null;
   refreshAll();
-  showToast('🗑️ 商品已删除');
+  showToast('\uD83D\uDDD1\uFE0F \u5546\u54C1\u5DF2\u5220\u9664');
 }
 
-/* ===== Tab Navigation ===== */
+function deleteProductById(productId) {
+  if (!confirm('\u786E\u5B9A\u8981\u4E0B\u67B6\u8FD9\u4E2A\u5546\u54C1\u5417\uFF1F')) return;
+  state.products = state.products.filter(function(p) { return p.id !== productId; });
+  saveState();
+  renderCategoryTabs();
+  renderShop();
+}
+
+/* ===== Tab 导航 ===== */
 function switchTab(tabName) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
-  const page = document.getElementById('page-' + tabName);
-  const tab = document.querySelector(`.tab-item[data-tab="${tabName}"]`);
+  document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
+  document.querySelectorAll('.tab-item').forEach(function(t) { t.classList.remove('active'); });
+  var page = document.getElementById('page-' + tabName);
+  var tab = document.querySelector('.tab-item[data-tab="' + tabName + '"]');
   if (page) page.classList.add('active');
   if (tab) tab.classList.add('active');
   if (tabName === 'home') renderHome();
@@ -505,143 +769,165 @@ function switchTab(tabName) {
   if (page) page.scrollTop = 0;
 }
 
-/* ===== Render: Home ===== */
+/* ===== 渲染: 首页 ===== */
 function renderHome() {
   document.getElementById('home-points').textContent = state.points;
   document.getElementById('home-coins').textContent = state.coins;
-  const moodAvg = (state.pet.hunger + state.pet.clean + state.pet.mood + state.pet.energy) / 4;
-  const moods = ['我需要照顾...', '有点不舒服...', '还可以吧~', '心情不错~', '超级开心！'];
-  const moodIdx = Math.min(Math.floor(moodAvg / 25), 4);
+  var moodAvg = (state.pet.hunger + state.pet.clean + state.pet.mood + state.pet.energy) / 4;
+  var moods = ['\u6211\u9700\u8981\u7167\u987E...', '\u6709\u70B9\u4E0D\u8212\u670D...', '\u8FD8\u53EF\u4EE5\u5427~', '\u5FC3\u60C5\u4E0D\u9519~', '\u8D85\u7EA7\u5F00\u5FC3\uFF01'];
+  var moodIdx = Math.min(Math.floor(moodAvg / 25), 4);
   document.getElementById('pet-mood').textContent = moods[moodIdx];
   document.getElementById('pet-name').textContent = state.pet.name;
-  document.getElementById('pet-level').textContent = 'Lv.' + state.pet.level;
+  var lvlInfo = getLevelInfo(calcXP());
+  document.getElementById('pet-level').textContent = 'Lv.' + state.pet.level + ' ' + lvlInfo.title;
   updateStatusBar('hunger', state.pet.hunger, '#FF8C7A');
   updateStatusBar('clean', state.pet.clean, '#6BB6E0');
   updateStatusBar('mood', state.pet.mood, '#FFC857');
   updateStatusBar('energy', state.pet.energy, '#7BB56A');
-  const completed = state.tasks.filter(t => t.completed).length;
-  document.getElementById('home-task-count').textContent = `${completed}/${state.tasks.length}`;
-  document.getElementById('home-task-points').textContent = '+' + state.tasks.filter(t => t.completed).reduce((s, t) => s + t.points, 0) + ' 积分';
+  var completed = state.tasks.filter(function(t) { return t.completed; }).length;
+  document.getElementById('home-task-count').textContent = completed + '/' + state.tasks.length;
+  var taskPoints = state.tasks.filter(function(t) { return t.completed; }).reduce(function(s, t) { return s + t.points; }, 0);
+  document.getElementById('home-task-points').textContent = '+' + taskPoints + ' \u79EF\u5206';
   document.getElementById('streak-num').textContent = state.streak;
-  const dots = document.getElementById('streak-dots');
-  dots.innerHTML = '';
-  for (let i = 0; i < 7; i++) {
-    const d = document.createElement('div');
+  var dotsEl = document.getElementById('streak-dots');
+  dotsEl.innerHTML = '';
+  for (var i = 0; i < 7; i++) {
+    var d = document.createElement('div');
     d.className = 'streak-dot' + (i < state.streak ? ' active' : '');
-    dots.appendChild(d);
+    dotsEl.appendChild(d);
   }
+  // 更新宠物外观状态
+  updatePetAppearance(moodAvg);
+  // 更新在线状态
+  updateOnlineStatus();
 }
 
 function updateStatusBar(id, value, color) {
-  const fill = document.getElementById(`bar-${id}-fill`);
-  const text = document.getElementById(`bar-${id}-percent`);
+  var fill = document.getElementById('bar-' + id + '-fill');
+  var text = document.getElementById('bar-' + id + '-percent');
   if (fill) { fill.style.width = value + '%'; fill.style.background = color; }
   if (text) text.textContent = Math.round(value) + '%';
 }
 
-/* ===== Render: Tasks ===== */
+/* ===== 宠物外观随状态变化 ===== */
+function updatePetAppearance(moodAvg) {
+  var cat = document.getElementById('cat');
+  if (!cat) return;
+  // 移除旧状态类
+  cat.classList.remove('pet-sad', 'pet-hungry', 'pet-dirty', 'pet-tired', 'pet-happy');
+  // 饥饿状态
+  if (state.pet.hunger < 25) cat.classList.add('pet-hungry');
+  // 脏状态
+  if (state.pet.clean < 25) cat.classList.add('pet-dirty');
+  // 疲惫状态
+  if (state.pet.energy < 15) cat.classList.add('pet-tired');
+  // 不开心状态
+  if (moodAvg < 30) cat.classList.add('pet-sad');
+  // 非常开心
+  if (moodAvg > 80) cat.classList.add('pet-happy');
+}
+
+/* ===== 渲染: 任务 ===== */
 function renderTasks() {
   document.getElementById('task-points').textContent = state.points;
-  const list = document.getElementById('task-list');
+  var list = document.getElementById('task-list');
   list.innerHTML = '';
-  const showEdit = state.parentMode;
+  var showEdit = state.parentMode;
 
-  state.tasks.forEach(task => {
-    const item = document.createElement('div');
+  state.tasks.forEach(function(task) {
+    var item = document.createElement('div');
     item.className = 'task-item' + (task.completed ? ' completed' : '');
-    item.innerHTML = `
-      <div class="task-icon">${task.completed ? '✓' : task.emoji}</div>
-      <div class="task-body">
-        <div class="task-name">${task.name}</div>
-        <div class="task-rewards">
-          <span class="task-reward points">⭐ +${task.points} 积分</span>
-          <span class="task-reward coins">🪙 +${task.coins} 金币</span>
-        </div>
-      </div>
-      ${task.completed
-        ? (showEdit ? `<div class="task-edit-controls">
-            <button class="edit-icon-btn edit" onclick="openTaskEditor(${task.id})" title="编辑">✏️</button>
-            <button class="edit-icon-btn delete" onclick="deleteTaskById(${task.id})" title="删除">🗑️</button>
-           </div><div class="task-check">✓</div>` : '<div class="task-check">✓</div>')
-        : (showEdit
-          ? `<div class="task-edit-controls">
-              <button class="edit-icon-btn edit" onclick="openTaskEditor(${task.id})" title="编辑">✏️</button>
-              <button class="edit-icon-btn delete" onclick="deleteTaskById(${task.id})" title="删除">🗑️</button>
-             </div><button class="task-btn pending" onclick="completeTask(${task.id})">打卡</button>`
-          : `<button class="task-btn pending" onclick="completeTask(${task.id})">打卡</button>`)
-      }
-    `;
+    var iconHtml = task.completed ? '\u2713' : task.emoji;
+    var editHtml = '';
+    if (showEdit) {
+      editHtml = '<div class="task-edit-controls">'
+        + '<button class="edit-icon-btn edit" onclick="openTaskEditor(' + task.id + ')" title="\u7F16\u8F91">\u270F\uFE0F</button>'
+        + '<button class="edit-icon-btn delete" onclick="deleteTaskById(' + task.id + ')" title="\u5220\u9664">\uD83D\uDDD1\uFE0F</button>'
+        + '</div>';
+    }
+    var actionHtml = task.completed
+      ? '<div class="task-check">\u2713</div>'
+      : '<button class="task-btn pending" onclick="completeTask(' + task.id + ')">\u6253\u5361</button>';
+
+    item.innerHTML = ''
+      + '<div class="task-icon">' + iconHtml + '</div>'
+      + '<div class="task-body">'
+      + '<div class="task-name">' + task.name + '</div>'
+      + '<div class="task-rewards">'
+      + '<span class="task-reward points">\u2B50 +' + task.points + ' \u79EF\u5206</span>'
+      + '<span class="task-reward coins">\uD83E\uDE99 +' + task.coins + ' \u91D1\u5E01</span>'
+      + '</div>'
+      + '</div>'
+      + (showEdit ? editHtml : '')
+      + actionHtml;
     list.appendChild(item);
   });
 
   document.getElementById('add-task-btn').style.display = showEdit ? 'flex' : 'none';
 
-  const completed = state.tasks.filter(t => t.completed).length;
-  document.getElementById('summary-completed').textContent = `${completed}/${state.tasks.length}`;
-  document.getElementById('summary-points').textContent = state.tasks.filter(t => t.completed).reduce((s, t) => s + t.points, 0);
-  document.getElementById('summary-coins').textContent = state.tasks.filter(t => t.completed).reduce((s, t) => s + t.coins, 0);
+  var completed = state.tasks.filter(function(t) { return t.completed; }).length;
+  document.getElementById('summary-completed').textContent = completed + '/' + state.tasks.length;
+  document.getElementById('summary-points').textContent = state.tasks.filter(function(t) { return t.completed; }).reduce(function(s, t) { return s + t.points; }, 0);
+  document.getElementById('summary-coins').textContent = state.tasks.filter(function(t) { return t.completed; }).reduce(function(s, t) { return s + t.coins; }, 0);
 }
 
-function deleteTaskById(taskId) {
-  if (!confirm('确定要删除这个任务吗？')) return;
-  state.tasks = state.tasks.filter(t => t.id !== taskId);
-  saveState();
-  renderTasks();
-}
-
-/* ===== Render: Shop ===== */
-let currentCategory = '全部';
-
+/* ===== 渲染: 商店 ===== */
 function renderCategoryTabs() {
-  const tabs = document.getElementById('category-tabs');
-  const allCats = ['全部', ...new Set(state.products.map(p => p.category))];
-  tabs.innerHTML = allCats.map((cat, i) => `
-    <button class="cat-tab${cat === currentCategory ? ' active' : ''}" onclick="filterCategory('${cat}')">${cat}</button>
-  `).join('');
+  var tabs = document.getElementById('category-tabs');
+  var cats = ['\u5168\u90E8'];
+  var seen = {};
+  state.products.forEach(function(p) {
+    if (!seen[p.category]) { seen[p.category] = true; cats.push(p.category); }
+  });
+  tabs.innerHTML = cats.map(function(cat, i) {
+    return '<button class="cat-tab' + (cat === currentCategory ? ' active' : '') + '" onclick="filterCategory(\'' + cat + '\')">' + cat + '</button>';
+  }).join('');
 }
 
 function renderShop() {
   document.getElementById('shop-points').textContent = state.points;
   document.getElementById('add-product-btn').style.display = state.parentMode ? 'flex' : 'none';
 
-  const grid = document.getElementById('product-grid');
+  var grid = document.getElementById('product-grid');
   grid.innerHTML = '';
 
-  const filtered = currentCategory === '全部'
+  var filtered = currentCategory === '\u5168\u90E8'
     ? state.products
-    : state.products.filter(p => p.category === currentCategory);
+    : state.products.filter(function(p) { return p.category === currentCategory; });
 
-  filtered.forEach(product => {
-    const canAfford = state.points >= product.price && product.stock > 0;
-    const card = document.createElement('div');
-    const stockClass = product.stock <= 3 && product.stock > 0 ? ' low' : '';
-    const stockText = product.stock === 0 ? '已兑换' : `库存 ${product.stock}`;
+  filtered.forEach(function(product) {
+    var canAfford = state.points >= product.price && product.stock > 0;
+    var card = document.createElement('div');
+    var stockClass = product.stock <= 3 && product.stock > 0 ? ' low' : '';
+    var stockText = product.stock === 0 ? '\u5DF2\u5151\u6362' : '\u5E93\u5B58 ' + product.stock;
 
     card.className = 'product-card' + (!canAfford && !state.parentMode ? ' disabled' : '');
     card.style.position = 'relative';
-    card.innerHTML = `
-      ${state.parentMode ? `
-        <div class="product-edit-overlay">
-          <button class="edit-icon-btn edit" onclick="openProductEditor(${product.id})" title="编辑">✏️</button>
-          <button class="edit-icon-btn delete" onclick="deleteProductById(${product.id})" title="删除">🗑️</button>
-        </div>
-      ` : ''}
-      <div class="product-img">${product.emoji}</div>
-      <div class="product-info">
-        <div class="product-name">${product.name}</div>
-        <div class="product-meta">
-          <span class="product-price">⭐ ${product.price}</span>
-          <span class="product-stock${stockClass}">${stockText}</span>
-        </div>
-        ${state.parentMode
-          ? `<button class="exchange-btn disabled">家长模式</button>`
-          : `<button class="exchange-btn ${canAfford ? 'available' : 'disabled'}"
-              ${canAfford ? `onclick="exchangeProduct(${product.id})"` : 'disabled'}>
-              ${product.stock === 0 ? '已兑换' : canAfford ? '兑换' : '积分不足'}
-            </button>`
-        }
-      </div>
-    `;
+
+    var editOverlayHtml = state.parentMode
+      ? '<div class="product-edit-overlay">'
+        + '<button class="edit-icon-btn edit" onclick="openProductEditor(' + product.id + ')" title="\u7F16\u8F91">\u270F\uFE0F</button>'
+        + '<button class="edit-icon-btn delete" onclick="deleteProductById(' + product.id + ')" title="\u5220\u9664">\uD83D\uDDD1\uFE0F</button>'
+        + '</div>'
+      : '';
+
+    var btnHtml = state.parentMode
+      ? '<button class="exchange-btn disabled">\u5BB6\u957F\u6A21\u5F0F</button>'
+      : '<button class="exchange-btn ' + (canAfford ? 'available' : 'disabled') + '"'
+        + (canAfford ? ' onclick="exchangeProduct(' + product.id + ')"' : ' disabled')
+        + '>' + (product.stock === 0 ? '\u5DF2\u5151\u6362' : (canAfford ? '\u5151\u6362' : '\u79EF\u5206\u4E0D\u8DB3')) + '</button>';
+
+    card.innerHTML = ''
+      + editOverlayHtml
+      + '<div class="product-img">' + product.emoji + '</div>'
+      + '<div class="product-info">'
+      + '<div class="product-name">' + product.name + '</div>'
+      + '<div class="product-meta">'
+      + '<span class="product-price">\u2B50 ' + product.price + '</span>'
+      + '<span class="product-stock' + stockClass + '">' + stockText + '</span>'
+      + '</div>'
+      + btnHtml
+      + '</div>';
     grid.appendChild(card);
   });
 }
@@ -652,189 +938,217 @@ function filterCategory(cat) {
   renderShop();
 }
 
-function deleteProductById(productId) {
-  if (!confirm('确定要下架这个商品吗？')) return;
-  state.products = state.products.filter(p => p.id !== productId);
-  saveState();
-  renderCategoryTabs();
-  renderShop();
-}
-
-/* ===== Render: Profile ===== */
+/* ===== 渲染: 我的 ===== */
 function renderProfile() {
-  document.getElementById('profile-name').textContent = state.profile.name || '小图';
-  document.getElementById('profile-level').textContent = `Lv.${state.pet.level} 宠物达人`;
+  document.getElementById('profile-name').textContent = state.profile.name || '\u5C0F\u56FE';
+  var lvlInfo = getLevelInfo(calcXP());
+  document.getElementById('profile-level').textContent = 'Lv.' + state.pet.level + ' ' + lvlInfo.title;
   renderProfileAvatar();
   document.getElementById('stat-tasks').textContent = state.stats.totalTasks;
   document.getElementById('stat-points').textContent = state.stats.totalPoints;
   document.getElementById('stat-coins').textContent = state.stats.totalCoins;
 
-  // Exchange history
-  const histList = document.getElementById('history-list');
+  // 进度条: 距下一级
+  var xp = calcXP();
+  var lvlData = getLevelInfo(xp);
+  var nextLvl = getNextLevelInfo(lvlData.level);
+  if (nextLvl) {
+    var currentXP = xp - lvlData.xpRequired;
+    var neededXP = nextLvl.xpRequired - lvlData.xpRequired;
+    var pct = Math.min(100, Math.round(currentXP / neededXP * 100));
+    var xpBar = document.getElementById('xp-progress-bar');
+    var xpText = document.getElementById('xp-progress-text');
+    if (xpBar) xpBar.style.width = pct + '%';
+    if (xpText) xpText.textContent = currentXP + '/' + neededXP + ' XP';
+  } else {
+    var xpBar2 = document.getElementById('xp-progress-bar');
+    var xpText2 = document.getElementById('xp-progress-text');
+    if (xpBar2) xpBar2.style.width = '100%';
+    if (xpText2) xpText2.textContent = 'MAX';
+  }
+
+  // 兑换记录
+  var histList = document.getElementById('history-list');
   histList.innerHTML = '';
   if (state.exchanges.length === 0) {
-    histList.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-light);font-size:14px;">还没有兑换记录哦~</div>';
+    histList.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-light);font-size:14px;">\u8FD8\u6CA1\u6709\u5151\u6362\u8BB0\u5F55\u54E6~</div>';
   } else {
-    state.exchanges.slice().reverse().forEach(ex => {
-      const item = document.createElement('div');
+    state.exchanges.slice().reverse().forEach(function(ex) {
+      var item = document.createElement('div');
       item.className = 'history-item';
-      const isPending = ex.status === 'pending';
-      const canVerify = isPending && state.parentMode;
-      item.innerHTML = `
-        <div class="history-icon" style="background:${isPending ? 'var(--yellow-soft)' : 'var(--green-soft)'}">${ex.emoji || '🎁'}</div>
-        <div class="history-body">
-          <div class="history-name">${ex.product}</div>
-          <div class="history-date">${ex.date} · ${ex.id}</div>
-        </div>
-        <div class="history-points">-${ex.points}积分</div>
-        ${canVerify
-          ? `<button class="verify-btn" onclick="verifyExchange('${ex.id}')">核销</button>`
-          : `<span class="history-status ${ex.status}">${isPending ? '待核销' : '已核销'}</span>`
-        }
-      `;
+      var isPending = ex.status === 'pending';
+      var canVerify = isPending && state.parentMode;
+      item.innerHTML = ''
+        + '<div class="history-icon" style="background:' + (isPending ? 'var(--yellow-soft)' : 'var(--green-soft)') + '">' + (ex.emoji || '\uD83C\uDF81') + '</div>'
+        + '<div class="history-body">'
+        + '<div class="history-name">' + ex.product + '</div>'
+        + '<div class="history-date">' + ex.date + ' \u00B7 ' + ex.id + '</div>'
+        + '</div>'
+        + '<div class="history-points">-' + ex.points + '\u79EF\u5206</div>'
+        + (canVerify
+          ? '<button class="verify-btn" onclick="verifyExchange(\'' + ex.id + '\')">\u6838\u9500</button>'
+          : '<span class="history-status ' + ex.status + '">' + (isPending ? '\u5F85\u6838\u9500' : '\u5DF2\u6838\u9500') + '</span>'
+        );
       histList.appendChild(item);
     });
   }
 
-  // Settings
-  document.getElementById('parent-toggle').classList.toggle('on', state.parentMode);
-  document.getElementById('parent-mode-text').textContent = state.parentMode ? '已开启' : '未开启';
+  // 成就徽章
+  renderAchievements();
 
-  // Pending verification section
+  // 设置
+  document.getElementById('parent-toggle').classList.toggle('on', state.parentMode);
+  document.getElementById('parent-mode-text').textContent = state.parentMode ? '\u5DF2\u5F00\u542F' : '\u672A\u5F00\u542F';
   renderPendingSection();
 }
 
-/* ===== Profile: avatar & nickname ===== */
+/* ===== 成就徽章渲染 ===== */
+function renderAchievements() {
+  var container = document.getElementById('achievements-container');
+  if (!container) return;
+  container.innerHTML = '';
+  ACHIEVEMENTS.forEach(function(ach) {
+    var earned = state.achievements.indexOf(ach.id) !== -1;
+    var div = document.createElement('div');
+    div.className = 'achievement-badge' + (earned ? ' earned' : ' locked');
+    div.title = ach.desc;
+    div.innerHTML = ''
+      + '<div class="achievement-icon">' + (earned ? ach.emoji : '\uD83D\uDD12') + '</div>'
+      + '<div class="achievement-name">' + ach.name + '</div>';
+    container.appendChild(div);
+  });
+}
+
+/* ===== 头像渲染 ===== */
 function renderProfileAvatar() {
-  const img = document.getElementById('profile-avatar-img');
-  const emoji = document.getElementById('profile-avatar-emoji');
+  var img = document.getElementById('profile-avatar-img');
+  var emoji = document.getElementById('profile-avatar-emoji');
   if (!img || !emoji) return;
-  if (state.profile.avatar) {
-    img.src = state.profile.avatar;
-    img.style.display = 'block';
-    emoji.style.display = 'none';
-  } else {
-    img.style.display = 'none';
-    emoji.style.display = 'flex';
-    emoji.textContent = '👦';
-  }
+  loadAvatar(function(avatarData) {
+    if (avatarData) {
+      img.src = avatarData;
+      img.style.display = 'block';
+      emoji.style.display = 'none';
+    } else {
+      img.style.display = 'none';
+      emoji.style.display = 'flex';
+    }
+  });
 }
 
 function openProfileEditor() {
   document.getElementById('profile-name-input').value = state.profile.name || '';
-  const eImg = document.getElementById('profile-edit-avatar-img');
-  const eEmoji = document.getElementById('profile-edit-avatar-emoji');
-  if (state.profile.avatar) {
-    eImg.src = state.profile.avatar;
-    eImg.style.display = 'block';
-    eEmoji.style.display = 'none';
-  } else {
-    eImg.style.display = 'none';
-    eEmoji.style.display = 'flex';
-  }
+  loadAvatar(function(avatarData) {
+    var eImg = document.getElementById('profile-edit-avatar-img');
+    var eEmoji = document.getElementById('profile-edit-avatar-emoji');
+    if (avatarData) {
+      eImg.src = avatarData;
+      eImg.style.display = 'block';
+      eEmoji.style.display = 'none';
+    } else {
+      eImg.style.display = 'none';
+      eEmoji.style.display = 'flex';
+    }
+  });
   document.getElementById('profile-edit-popup').classList.add('show');
 }
 
 function saveProfile() {
-  const name = document.getElementById('profile-name-input').value.trim();
-  if (!name) { showToast('昵称不能为空'); return; }
+  var name = document.getElementById('profile-name-input').value.trim();
+  if (!name) { showToast('\u6635\u79F0\u4E0D\u80FD\u4E3A\u7A7A'); return; }
   state.profile.name = name.slice(0, 12);
   saveState();
   closePopup('profile-edit-popup');
   renderProfile();
-  showToast('✅ 资料已保存');
+  showToast('\u2705 \u8D44\u6599\u5DF2\u4FDD\u5B58');
 }
 
 function triggerAvatarUpload() {
-  const input = document.getElementById('avatar-file');
+  var input = document.getElementById('avatar-file');
   if (input) input.click();
 }
 
 function handleAvatarFile(input) {
-  const file = input.files && input.files[0];
+  var file = input.files && input.files[0];
   if (!file) return;
-  resizeImageToDataURL(file, 256, (dataUrl) => {
-    if (!dataUrl) { showToast('❌ 图片读取失败'); input.value = ''; return; }
-    state.profile.avatar = dataUrl;
-    saveState();
+  resizeImageToDataURL(file, 256, function(dataUrl) {
+    if (!dataUrl) { showToast('\u274C \u56FE\u7247\u8BFB\u53D6\u5931\u8D25'); input.value = ''; return; }
+    saveAvatar(dataUrl);
     renderProfile();
-    // 同步刷新编辑弹窗里的预览
-    const eImg = document.getElementById('profile-edit-avatar-img');
-    const eEmoji = document.getElementById('profile-edit-avatar-emoji');
+    var eImg = document.getElementById('profile-edit-avatar-img');
+    var eEmoji = document.getElementById('profile-edit-avatar-emoji');
     if (eImg) { eImg.src = dataUrl; eImg.style.display = 'block'; }
     if (eEmoji) eEmoji.style.display = 'none';
-    showToast('✅ 头像已更新');
+    showToast('\u2705 \u5934\u50CF\u5DF2\u66F4\u65B0');
     input.value = '';
   });
 }
 
-// 把上传的图片压缩到最大边 maxSize，转成 dataURL 存进 localStorage（避免体积过大）
 function resizeImageToDataURL(file, maxSize, cb) {
-  const reader = new FileReader();
-  reader.onload = () => {
-    const img = new Image();
-    img.onload = () => {
-      const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
-      const w = Math.round(img.width * scale);
-      const h = Math.round(img.height * scale);
-      const canvas = document.createElement('canvas');
+  var reader = new FileReader();
+  reader.onload = function() {
+    var img = new Image();
+    img.onload = function() {
+      var scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+      var w = Math.round(img.width * scale);
+      var h = Math.round(img.height * scale);
+      var canvas = document.createElement('canvas');
       canvas.width = w; canvas.height = h;
-      const ctx = canvas.getContext('2d');
+      var ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0, w, h);
       try { cb(canvas.toDataURL('image/jpeg', 0.85)); }
       catch (e) { cb(null); }
     };
-    img.onerror = () => cb(null);
+    img.onerror = function() { cb(null); };
     img.src = reader.result;
   };
-  reader.onerror = () => cb(null);
+  reader.onerror = function() { cb(null); };
   reader.readAsDataURL(file);
 }
 
 function renderPendingSection() {
-  const pending = state.exchanges.filter(e => e.status === 'pending');
-  const badge = document.getElementById('pending-count-badge');
-  const countText = document.getElementById('pending-count-text');
-  const list = document.getElementById('pending-list');
+  var pending = state.exchanges.filter(function(e) { return e.status === 'pending'; });
+  var badge = document.getElementById('pending-count-badge');
+  var countText = document.getElementById('pending-count-text');
+  var list = document.getElementById('pending-list');
 
   badge.textContent = pending.length;
-  countText.textContent = pending.length + '件待核销商品';
+  countText.textContent = pending.length + '\u4EF6\u5F85\u6838\u9500\u5546\u54C1';
 
   list.innerHTML = '';
   if (pending.length === 0) {
-    list.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text-light);font-size:13px;">暂无待核销商品~</div>';
+    list.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text-light);font-size:13px;">\u6682\u65E0\u5F85\u6838\u9500\u5546\u54C1~</div>';
   } else {
-    pending.forEach(ex => {
-      list.innerHTML += `
-        <div class="pending-item">
-          <div class="pending-item-icon">${ex.emoji}</div>
-          <div class="pending-item-body">
-            <div class="pending-item-name">${ex.product}</div>
-            <div class="pending-item-date">${ex.date} · <span class="pending-item-code">${ex.id}</span></div>
-          </div>
-          <span class="pending-item-action" onclick="viewPendingDetail('${ex.id}')">查看 ›</span>
-        </div>
-      `;
+    pending.forEach(function(ex) {
+      list.innerHTML += ''
+        + '<div class="pending-item">'
+        + '<div class="pending-item-icon">' + ex.emoji + '</div>'
+        + '<div class="pending-item-body">'
+        + '<div class="pending-item-name">' + ex.product + '</div>'
+        + '<div class="pending-item-date">' + ex.date + ' \u00B7 <span class="pending-item-code">' + ex.id + '</span></div>'
+        + '</div>'
+        + '<span class="pending-item-action" onclick="viewPendingDetail(\'' + ex.id + '\')">\u67E5\u770B \u203A</span>'
+        + '</div>';
     });
   }
 }
 
 function viewPendingDetail(exId) {
-  const ex = state.exchanges.find(e => e.id === exId);
+  var ex = state.exchanges.find(function(e) { return e.id === exId; });
   if (!ex) return;
   showExchangePopup(ex);
 }
 
 function togglePendingList() {
-  const list = document.getElementById('pending-list');
-  const arrow = document.getElementById('pending-arrow');
-  const isOpen = list.classList.toggle('show');
-  arrow.textContent = isOpen ? '⌄' : '›';
+  var list = document.getElementById('pending-list');
+  var arrow = document.getElementById('pending-arrow');
+  var isOpen = list.classList.toggle('show');
+  arrow.textContent = isOpen ? '\u2304' : '\u203A';
 }
 
-/* ===== Actions ===== */
+/* ===== 操作 ===== */
 function completeTask(taskId) {
-  const task = state.tasks.find(t => t.id === taskId);
+  var task = state.tasks.find(function(t) { return t.id === taskId; });
   if (!task || task.completed) return;
   task.completed = true;
   state.points += task.points;
@@ -842,7 +1156,7 @@ function completeTask(taskId) {
   state.stats.totalTasks += 1;
   state.stats.totalPoints += task.points;
   state.stats.totalCoins += task.coins;
-  if (state.tasks.every(t => t.completed)) {
+  if (state.tasks.every(function(t) { return t.completed; })) {
     if (state.streakDate !== new Date().toDateString()) {
       state.streak += 1;
       state.streakDate = new Date().toDateString();
@@ -852,107 +1166,99 @@ function completeTask(taskId) {
   saveState();
   showTaskPopup(task);
   fireConfetti();
+  // 检查升级与成就
+  setTimeout(function() { checkLevelUp(); checkAchievements(); }, 500);
 }
 
 function feedPet() {
-  const cost = COSTS.feed;
-  if (state.coins < cost) { showToast('金币不足！'); return; }
-  if (state.pet.hunger >= 100) { showToast('小宠已经吃饱啦~'); return; }
+  var cost = COSTS.feed;
+  if (state.coins < cost) { showToast('\u91D1\u5E01\u4E0D\u8DB3\uFF01'); return; }
+  if (state.pet.hunger >= 100) { showToast('\u5C0F\u5BA0\u5DF2\u7ECF\u5403\u9971\u5566~'); return; }
   state.coins -= cost;
   applyPetEffects(PET_EFFECTS.feed);
   saveState();
-
-  // Eating animation
   triggerPetAnimation('eating');
   dropFood();
   playSound('eat');
-  setTimeout(() => {
+  setTimeout(function() {
     triggerPetAnimation('happy');
     renderHome();
   }, 800);
-  showToast('🍖 喂食成功！');
+  showToast('\uD83C\uDF56 \u5582\u98DF\u6210\u529F\uFF01');
 }
 
 function bathPet() {
-  const cost = COSTS.bath;
-  if (state.coins < cost) { showToast('金币不足！'); return; }
-  if (state.pet.clean >= 100) { showToast('小宠已经很干净啦~'); return; }
+  var cost = COSTS.bath;
+  if (state.coins < cost) { showToast('\u91D1\u5E01\u4E0D\u8DB3\uFF01'); return; }
+  if (state.pet.clean >= 100) { showToast('\u5C0F\u5BA0\u5DF2\u7ECF\u5F88\u5E72\u51C0\u5566~'); return; }
   state.coins -= cost;
   applyPetEffects(PET_EFFECTS.bath);
   saveState();
-
   triggerPetAnimation('bathing');
   playSound('water');
-  setTimeout(() => {
+  setTimeout(function() {
     triggerPetAnimation(null);
     renderHome();
   }, 1200);
-  showToast('🛁 洗澡成功！');
+  showToast('\uD83D\uDEC1 \u6D17\u6FA1\u6210\u529F\uFF01');
 }
 
 function playPet() {
-  const cost = COSTS.play;
-  if (state.coins < cost) { showToast('金币不足！'); return; }
-  if (state.pet.energy < 10) { showToast('小宠太累了，需要休息~'); return; }
+  var cost = COSTS.play;
+  if (state.coins < cost) { showToast('\u91D1\u5E01\u4E0D\u8DB3\uFF01'); return; }
+  if (state.pet.energy < 10) { showToast('\u5C0F\u5BA0\u592A\u7D2F\u4E86\uFF0C\u9700\u8981\u4F11\u606F~'); return; }
   state.coins -= cost;
   applyPetEffects(PET_EFFECTS.play);
   saveState();
-
   triggerPetAnimation('playing');
   playSound('happy');
-  setTimeout(() => {
+  setTimeout(function() {
     triggerPetAnimation(null);
     renderHome();
   }, 1500);
-  showToast('🎾 玩耍成功！');
+  showToast('\uD83C\uDFBE \u73A9\u800D\u6210\u529F\uFF01');
 }
 
 function walkPet() {
-  const cost = COSTS.walk;
-  if (state.coins < cost) { showToast('金币不足！'); return; }
-  if (state.pet.energy < 15) { showToast('小宠太累了，需要休息~'); return; }
+  var cost = COSTS.walk;
+  if (state.coins < cost) { showToast('\u91D1\u5E01\u4E0D\u8DB3\uFF01'); return; }
+  if (state.pet.energy < 15) { showToast('\u5C0F\u5BA0\u592A\u7D2F\u4E86\uFF0C\u9700\u8981\u4F11\u606F~'); return; }
   state.coins -= cost;
   applyPetEffects(PET_EFFECTS.walk);
   saveState();
-
-  // Walking animation with ground
-  const ground = document.getElementById('walk-ground');
+  var ground = document.getElementById('walk-ground');
   if (ground) ground.classList.add('show');
   triggerPetAnimation('walking');
   playSound('walk');
-
-  setTimeout(() => {
+  setTimeout(function() {
     triggerPetAnimation(null);
     if (ground) ground.classList.remove('show');
     renderHome();
   }, 3200);
-  showToast('🌳 出门散步成功！');
+  showToast('\uD83C\uDF33 \u51FA\u95E8\u6563\u6B65\u6210\u529F\uFF01');
 }
 
 function dropFood() {
-  const food = document.getElementById('food-particle');
+  var food = document.getElementById('food-particle');
   if (!food) return;
-  const foods = ['🐟','🍖','🍗','🦴','🥩','🍤','🧀'];
+  var foods = ['\uD83D\uDC1F','\uD83C\uDF56','\uD83C\uDF57','\uD83E\uDEB4','\uD83E\uDD69','\uD83C\uDF64','\uD83E\uDDC0'];
   food.textContent = foods[Math.floor(Math.random() * foods.length)];
   food.classList.remove('drop');
-  void food.offsetWidth; // force reflow
+  void food.offsetWidth;
   food.classList.add('drop');
 }
 
 function triggerPetAnimation(type) {
-  const cat = document.getElementById('cat');
+  var cat = document.getElementById('cat');
   if (!cat) return;
-  // Remove all animation classes
   cat.classList.remove('eating', 'walking', 'bathing', 'playing', 'happy');
   if (type) {
-    void cat.offsetWidth; // force reflow
+    void cat.offsetWidth;
     cat.classList.add(type);
   }
 }
 
-/* ===== Sound Effects (Web Audio API) ===== */
-let audioCtx = null;
-
+/* ===== 音效 (Web Audio API) ===== */
 function getAudioContext() {
   if (!audioCtx) {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -962,15 +1268,14 @@ function getAudioContext() {
 
 function playSound(type) {
   try {
-    const ctx = getAudioContext();
-    const now = ctx.currentTime;
+    var ctx = getAudioContext();
+    var now = ctx.currentTime;
 
     if (type === 'eat') {
-      // Two short percussive "nom" sounds
-      for (let i = 0; i < 2; i++) {
-        const t = now + i * 0.12;
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
+      for (var i = 0; i < 2; i++) {
+        var t = now + i * 0.12;
+        var osc = ctx.createOscillator();
+        var gain = ctx.createGain();
         osc.connect(gain);
         gain.connect(ctx.destination);
         osc.type = 'sine';
@@ -982,66 +1287,67 @@ function playSound(type) {
         osc.stop(t + 0.1);
       }
     } else if (type === 'walk') {
-      // Rhythmic footstep taps
-      for (let i = 0; i < 8; i++) {
-        const t = now + i * 0.35;
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(200 + Math.random() * 100, t);
-        gain.gain.setValueAtTime(0.04, t);
-        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
-        osc.start(t);
-        osc.stop(t + 0.05);
+      for (var j = 0; j < 8; j++) {
+        var t2 = now + j * 0.35;
+        var osc2 = ctx.createOscillator();
+        var gain2 = ctx.createGain();
+        osc2.connect(gain2);
+        gain2.connect(ctx.destination);
+        osc2.type = 'triangle';
+        osc2.frequency.setValueAtTime(200 + Math.random() * 100, t2);
+        gain2.gain.setValueAtTime(0.04, t2);
+        gain2.gain.exponentialRampToValueAtTime(0.001, t2 + 0.05);
+        osc2.start(t2);
+        osc2.stop(t2 + 0.05);
       }
     } else if (type === 'water') {
-      // Splashy noise burst
-      const bufferSize = ctx.sampleRate * 0.3;
-      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-      const data = buffer.getChannelData(0);
-      for (let i = 0; i < bufferSize; i++) {
-        data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.05));
+      var bufferSize = ctx.sampleRate * 0.3;
+      var buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      var data = buffer.getChannelData(0);
+      for (var k = 0; k < bufferSize; k++) {
+        data[k] = (Math.random() * 2 - 1) * Math.exp(-k / (ctx.sampleRate * 0.05));
       }
-      const source = ctx.createBufferSource();
-      const gain = ctx.createGain();
+      var source = ctx.createBufferSource();
+      var gain3 = ctx.createGain();
       source.buffer = buffer;
-      source.connect(gain);
-      gain.connect(ctx.destination);
-      gain.gain.setValueAtTime(0.08, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+      source.connect(gain3);
+      gain3.connect(ctx.destination);
+      gain3.gain.setValueAtTime(0.08, now);
+      gain3.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
       source.start(now);
     } else if (type === 'happy') {
-      // Two-note ascending happy chime
-      const notes = [523, 659, 784]; // C5, E5, G5
-      notes.forEach((freq, i) => {
-        const t = now + i * 0.12;
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(freq, t);
-        gain.gain.setValueAtTime(0.06, t);
-        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
-        osc.start(t);
-        osc.stop(t + 0.22);
+      var notes = [523, 659, 784];
+      notes.forEach(function(freq, i) {
+        var t3 = now + i * 0.12;
+        var osc3 = ctx.createOscillator();
+        var gain4 = ctx.createGain();
+        osc3.connect(gain4);
+        gain4.connect(ctx.destination);
+        osc3.type = 'sine';
+        osc3.frequency.setValueAtTime(freq, t3);
+        gain4.gain.setValueAtTime(0.06, t3);
+        gain4.gain.exponentialRampToValueAtTime(0.001, t3 + 0.2);
+        osc3.start(t3);
+        osc3.stop(t3 + 0.22);
       });
     }
-  } catch(e) {
-    // Audio not available — silently skip
-  }
+  } catch(e) {}
 }
 
 function exchangeProduct(productId) {
-  const product = state.products.find(p => p.id === productId);
+  var product = state.products.find(function(p) { return p.id === productId; });
   if (!product || product.stock <= 0) return;
-  if (state.points < product.price) { showToast('积分不足！'); return; }
+  if (state.points < product.price) { showToast('\u79EF\u5206\u4E0D\u8DB3\uFF01'); return; }
   state.points -= product.price;
   product.stock -= 1;
-  const exId = 'EX' + new Date().toISOString().slice(0, 10).replace(/-/g, '') + Math.floor(Math.random() * 100).toString().padStart(2, '0');
-  const exchange = {
+  // 使用 crypto.randomUUID() 或回退
+  var exId;
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    exId = 'EX' + crypto.randomUUID().slice(0, 8).toUpperCase();
+  } else {
+    exId = 'EX' + new Date().toISOString().slice(0, 10).replace(/-/g, '') + Math.floor(Math.random() * 100).toString().padStart(2, '0');
+  }
+  var exchange = {
     id: exId,
     product: product.name,
     emoji: product.emoji,
@@ -1055,15 +1361,16 @@ function exchangeProduct(productId) {
 }
 
 function verifyExchange(exId) {
-  const ex = state.exchanges.find(e => e.id === exId);
+  var ex = state.exchanges.find(function(e) { return e.id === exId; });
   if (!ex || ex.status !== 'pending') return;
   ex.status = 'verified';
   saveState();
   renderProfile();
-  showToast('✅ 核销成功！');
+  checkAchievements();
+  showToast('\u2705 \u6838\u9500\u6210\u529F\uFF01');
 }
 
-/* ===== Popups ===== */
+/* ===== 弹窗 ===== */
 function showTaskPopup(task) {
   document.getElementById('popup-task-points').textContent = '+' + task.points;
   document.getElementById('popup-task-coins').textContent = '+' + task.coins;
@@ -1077,6 +1384,19 @@ function showExchangePopup(exchange) {
   document.getElementById('exchange-popup').classList.add('show');
 }
 
+function showLevelUpPopup(oldLevel, newInfo) {
+  document.getElementById('levelup-old').textContent = oldLevel;
+  document.getElementById('levelup-new').textContent = newInfo.level;
+  document.getElementById('levelup-title').textContent = newInfo.title;
+  document.getElementById('levelup-popup').classList.add('show');
+  fireConfetti();
+  playSound('happy');
+}
+
+function showAchievementToast(ach) {
+  showToast(ach.emoji + ' \uD83C\uDFC6 \u83B7\u5F97\u5FBD\u7AE0: ' + ach.name + '\uFF01');
+}
+
 function closePopup(id) {
   document.getElementById(id).classList.remove('show');
   if (id === 'task-edit-popup') currentEditTaskId = null;
@@ -1085,97 +1405,113 @@ function closePopup(id) {
 }
 
 function refreshAll() {
-  const activePage = document.querySelector('.page.active');
+  var activePage = document.querySelector('.page.active');
   if (!activePage) return;
   if (activePage.id === 'page-home') renderHome();
   if (activePage.id === 'page-tasks') renderTasks();
   if (activePage.id === 'page-shop') { renderCategoryTabs(); renderShop(); }
   if (activePage.id === 'page-profile') renderProfile();
-  // Always update parent bar and home currencies
-  document.getElementById('home-points').textContent = state.points;
-  document.getElementById('home-coins').textContent = state.coins;
-  document.getElementById('parent-bar').classList.toggle('show', state.parentMode);
+  // 避免在非首页时操作首页元素
+  var hp = document.getElementById('home-points');
+  var hc = document.getElementById('home-coins');
+  if (hp) hp.textContent = state.points;
+  if (hc) hc.textContent = state.coins;
+  var pb = document.getElementById('parent-bar');
+  if (pb) pb.classList.toggle('show', state.parentMode);
 }
 
-/* ===== Data Backup (导出/导入，跨设备与升级保险) ===== */
+/* ===== 数据备份 ===== */
 function exportBackup() {
-  const payload = {
+  var payload = {
     app: 'pet-pwa',
     version: APP_VERSION,
     schemaVersion: SCHEMA_VERSION,
     exportedAt: new Date().toISOString(),
-    state,
-    password: getParentPassword(),
+    state: state,
+    password: JSON.parse(localStorage.getItem(PASSWORD_KEY) || '{}'),
   };
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
+  // 备份时去除敏感的头像base64
+  if (payload.state.profile) payload.state.profile.avatar = '';
+  var blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
   a.href = url;
-  a.download = '小宠打卡备份_' + new Date().toISOString().slice(0, 10) + '.json';
+  a.download = '\u5C0F\u5BA0\u6253\u5361\u5907\u4EFD_' + new Date().toISOString().slice(0, 10) + '.json';
   document.body.appendChild(a);
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
-  showToast('✅ 备份已导出');
+  showToast('\u2705 \u5907\u4EFD\u5DF2\u5BFC\u51FA');
 }
 
 function handleBackupFile(input) {
-  const file = input.files && input.files[0];
+  var file = input.files && input.files[0];
   if (!file) return;
   importBackup(file);
   input.value = '';
 }
 
 function importBackup(file) {
-  const reader = new FileReader();
-  reader.onload = () => {
+  var reader = new FileReader();
+  reader.onload = function() {
     try {
-      const payload = JSON.parse(reader.result);
+      var payload = JSON.parse(reader.result);
       if (!payload || !payload.state) throw new Error('invalid');
-      const data = migrateState(payload.state);
-      state = {
-        ...DEFAULT_STATE,
-        ...data,
-        pet: { ...DEFAULT_STATE.pet, ...data.pet },
-        profile: { ...DEFAULT_STATE.profile, ...(data.profile || {}) },
-        stats: { ...DEFAULT_STATE.stats, ...data.stats },
-        tasks: Array.isArray(data.tasks) && data.tasks.length
-          ? data.tasks.map(t => ({ ...TASK_FIELDS, ...t }))
-          : DEFAULT_TASKS.map(t => ({ ...t })),
-        products: Array.isArray(data.products) && data.products.length
-          ? data.products.map(p => ({ ...PRODUCT_FIELDS, ...p }))
-          : DEFAULT_PRODUCTS.map(p => ({ ...p })),
-        exchanges: Array.isArray(data.exchanges) ? data.exchanges : [],
-      };
-      if (payload.password) localStorage.setItem(PASSWORD_KEY, payload.password);
+      var data = migrateState(payload.state);
+      state = loadStateFromData(data);
+      if (payload.password) {
+        var pwStr = typeof payload.password === 'object' ? JSON.stringify(payload.password) : payload.password;
+        localStorage.setItem(PASSWORD_KEY, pwStr);
+      }
       saveState();
+      // 刷新头像
+      avatarCache = data.profile && data.profile.avatar ? data.profile.avatar : '';
+      if (avatarCache) saveAvatar(avatarCache);
       refreshAll();
-      showToast('✅ 数据已恢复');
+      showToast('\u2705 \u6570\u636E\u5DF2\u6062\u590D');
     } catch (e) {
-      showToast('❌ 备份文件无效');
+      showToast('\u274C \u5907\u4EFD\u6587\u4EF6\u65E0\u6548');
     }
   };
   reader.readAsText(file);
 }
 
-/* ===== QR Code ===== */
+function loadStateFromData(data) {
+  var s = {};
+  for (var key in DEFAULT_STATE) {
+    if (DEFAULT_STATE.hasOwnProperty(key)) {
+      s[key] = (typeof data[key] !== 'undefined') ? data[key] : DEFAULT_STATE[key];
+    }
+  }
+  s.pet = {}; for (var pk in DEFAULT_STATE.pet) { s.pet[pk] = (data.pet && typeof data.pet[pk] !== 'undefined') ? data.pet[pk] : DEFAULT_STATE.pet[pk]; }
+  s.profile = {}; for (var pfk in DEFAULT_STATE.profile) { s.profile[pfk] = (data.profile && typeof data.profile[pfk] !== 'undefined') ? data.profile[pfk] : DEFAULT_STATE.profile[pfk]; }
+  s.stats = {}; for (var sk in DEFAULT_STATE.stats) { s.stats[sk] = (data.stats && typeof data.stats[sk] !== 'undefined') ? data.stats[sk] : DEFAULT_STATE.stats[sk]; }
+  s.tasks = Array.isArray(data.tasks) && data.tasks.length ? data.tasks.map(function(t) { var nt = { id: t.id, name: t.name }; for (var k in TASK_FIELDS) { nt[k] = (typeof t[k] !== 'undefined') ? t[k] : TASK_FIELDS[k]; } return nt; }) : JSON.parse(JSON.stringify(DEFAULT_TASKS));
+  s.products = Array.isArray(data.products) && data.products.length ? data.products.map(function(p) { var np = { id: p.id, name: p.name }; for (var k in PRODUCT_FIELDS) { np[k] = (typeof p[k] !== 'undefined') ? p[k] : PRODUCT_FIELDS[k]; } return np; }) : JSON.parse(JSON.stringify(DEFAULT_PRODUCTS));
+  s.exchanges = Array.isArray(data.exchanges) ? data.exchanges : [];
+  s.achievements = Array.isArray(data.achievements) ? data.achievements : [];
+  s.isOnline = navigator.onLine;
+  return s;
+}
+
+/* ===== 二维码 ===== */
 function drawQRCode(text) {
-  const canvas = document.getElementById('qr-canvas');
+  var canvas = document.getElementById('qr-canvas');
   if (!canvas) return;
-  const ctx = canvas.getContext('2d');
-  const size = 140;
+  var ctx = canvas.getContext('2d');
+  var size = 140;
   canvas.width = size; canvas.height = size;
   ctx.fillStyle = '#FFFFFF';
   ctx.fillRect(0, 0, size, size);
-  const grid = 21;
-  const cell = size / grid;
+  var grid = 21;
+  var cell = size / grid;
   ctx.fillStyle = '#3D3D3D';
-  let hash = 0;
-  for (let i = 0; i < text.length; i++) {
+  var hash = 0;
+  for (var i = 0; i < text.length; i++) {
     hash = ((hash << 5) - hash + text.charCodeAt(i)) | 0;
   }
-  for (let y = 0; y < grid; y++) {
-    for (let x = 0; x < grid; x++) {
+  for (var y = 0; y < grid; y++) {
+    for (var x = 0; x < grid; x++) {
       if ((x < 7 && y < 7) || (x >= grid - 7 && y < 7) || (x < 7 && y >= grid - 7)) {
         if (x === 0 || x === 6 || y === 0 || y === 6 ||
             (x >= 2 && x <= 4 && y >= 2 && y <= 4) ||
@@ -1192,74 +1528,130 @@ function drawQRCode(text) {
   }
 }
 
-/* ===== Confetti ===== */
+/* ===== Canvas 彩带 (性能优化) ===== */
+var confettiCanvas = null;
+var confettiCtx = null;
+var confettiParticles = [];
+var confettiRAF = null;
+
+function initConfettiCanvas() {
+  confettiCanvas = document.getElementById('confetti-canvas');
+  if (!confettiCanvas) return;
+  confettiCanvas.width = window.innerWidth;
+  confettiCanvas.height = window.innerHeight;
+  confettiCtx = confettiCanvas.getContext('2d');
+}
+
 function fireConfetti() {
-  const colors = ['#FFC857', '#FF8C7A', '#6BB6E0', '#7BB56A', '#B8A4F0'];
-  for (let i = 0; i < 40; i++) {
-    const c = document.createElement('div');
-    c.className = 'confetti';
-    c.style.background = colors[Math.floor(Math.random() * colors.length)];
-    c.style.left = Math.random() * 100 + '%';
-    c.style.top = '-20px';
-    c.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
-    document.body.appendChild(c);
-    const duration = 2000 + Math.random() * 1500;
-    const drift = (Math.random() - 0.5) * 200;
-    c.animate([
-      { transform: `translate(0, 0) rotate(0deg)`, opacity: 1 },
-      { transform: `translate(${drift}px, ${window.innerHeight + 40}px) rotate(${Math.random() * 720}deg)`, opacity: 0 }
-    ], { duration, easing: 'cubic-bezier(0.5, 0, 0.5, 1)' });
-    setTimeout(() => c.remove(), duration);
+  initConfettiCanvas();
+  if (!confettiCtx) return;
+  var colors = ['#FFC857', '#FF8C7A', '#6BB6E0', '#7BB56A', '#B8A4F0'];
+  for (var i = 0; i < 50; i++) {
+    confettiParticles.push({
+      x: Math.random() * confettiCanvas.width,
+      y: -20,
+      w: 6 + Math.random() * 8,
+      h: 6 + Math.random() * 8,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      vx: (Math.random() - 0.5) * 3,
+      vy: 3 + Math.random() * 5,
+      rotation: Math.random() * 360,
+      rotationSpeed: (Math.random() - 0.5) * 8,
+      opacity: 1,
+      life: 1,
+    });
+  }
+  if (!confettiRAF) {
+    confettiRAF = requestAnimationFrame(animateConfetti);
   }
 }
 
-/* ===== Toast ===== */
-let toastTimer = null;
+function animateConfetti() {
+  if (!confettiCtx || !confettiCanvas) { confettiRAF = null; return; }
+  confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+  var alive = false;
+  for (var i = confettiParticles.length - 1; i >= 0; i--) {
+    var p = confettiParticles[i];
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vy += 0.1;
+    p.rotation += p.rotationSpeed;
+    p.life -= 0.008;
+    p.opacity = Math.max(0, p.life);
+
+    confettiCtx.save();
+    confettiCtx.translate(p.x, p.y);
+    confettiCtx.rotate(p.rotation * Math.PI / 180);
+    confettiCtx.globalAlpha = p.opacity;
+    confettiCtx.fillStyle = p.color;
+    confettiCtx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+    confettiCtx.restore();
+
+    if (p.life > 0 && p.y < confettiCanvas.height + 40) {
+      alive = true;
+    } else {
+      confettiParticles.splice(i, 1);
+    }
+  }
+  if (alive) {
+    confettiRAF = requestAnimationFrame(animateConfetti);
+  } else {
+    confettiRAF = null;
+    confettiParticles = [];
+  }
+}
+
+/* ===== Toast (修复不消失问题) ===== */
 function showToast(msg) {
-  const toast = document.getElementById('toast');
+  var toast = document.getElementById('toast');
+  if (!toast) return;
   toast.textContent = msg;
   toast.classList.add('show');
   if (toastTimer) clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => toast.classList.remove('show'), 2500);
+  toastTimer = setTimeout(function() {
+    toast.classList.remove('show');
+    toastTimer = null;
+  }, 2500);
 }
 
-/* ===== Clock ===== */
+/* ===== 时钟 ===== */
 function updateClock() {
-  const now = new Date();
-  const h = now.getHours().toString().padStart(2, '0');
-  const m = now.getMinutes().toString().padStart(2, '0');
-  document.querySelectorAll('.status-time').forEach(el => el.textContent = `${h}:${m}`);
+  var now = new Date();
+  var h = now.getHours().toString().padStart(2, '0');
+  var m = now.getMinutes().toString().padStart(2, '0');
+  document.querySelectorAll('.status-time').forEach(function(el) { el.textContent = h + ':' + m; });
 }
 
-/* ===== Init ===== */
+/* ===== 初始化 ===== */
 function init() {
-  // First-time password setup
+  // 首次设置
   if (!checkFirstRun()) return;
 
   checkDailyReset();
   applyDecay();
 
-  // Ensure IDs are set for new installs
+  // 确保 ID 正确
   if (!state.nextTaskId || state.nextTaskId < 5) {
-    state.nextTaskId = Math.max(...state.tasks.map(t => t.id), 4) + 1;
+    state.nextTaskId = Math.max.apply(null, state.tasks.map(function(t) { return t.id; }).concat([4])) + 1;
   }
   if (!state.nextProductId || state.nextProductId < 7) {
-    state.nextProductId = Math.max(...state.products.map(p => p.id), 6) + 1;
+    state.nextProductId = Math.max.apply(null, state.products.map(function(p) { return p.id; }).concat([6])) + 1;
   }
 
-  // Add category tabs container if not exists
+  // 确保分类标签容器存在
   if (!document.getElementById('category-tabs')) {
-    const tabsDiv = document.createElement('div');
+    var tabsDiv = document.createElement('div');
     tabsDiv.className = 'category-tabs';
     tabsDiv.id = 'category-tabs';
-    const grid = document.getElementById('product-grid');
+    var grid = document.getElementById('product-grid');
     if (grid && grid.parentNode) {
       grid.parentNode.insertBefore(tabsDiv, grid);
     }
   }
 
-  document.querySelectorAll('.tab-item').forEach(tab => {
-    tab.addEventListener('click', () => switchTab(tab.dataset.tab));
+  // 标签导航事件
+  document.querySelectorAll('.tab-item').forEach(function(tab) {
+    tab.addEventListener('click', function() { switchTab(tab.dataset.tab); });
   });
 
   renderCategoryTabs();
@@ -1268,26 +1660,52 @@ function init() {
   renderShop();
   renderProfile();
 
-  document.getElementById('parent-bar').classList.toggle('show', state.parentMode);
+  var pb = document.getElementById('parent-bar');
+  if (pb) pb.classList.toggle('show', state.parentMode);
 
-  const aboutVer = document.getElementById('app-version');
+  var aboutVer = document.getElementById('app-version');
   if (aboutVer) aboutVer.textContent = 'v' + APP_VERSION;
 
   updateClock();
   setInterval(updateClock, 30000);
   setInterval(applyDecay, 60000);
 
-  // Close popups on overlay click
-  document.querySelectorAll('.popup-overlay').forEach(overlay => {
+  // 弹窗遮罩点击关闭
+  document.querySelectorAll('.popup-overlay').forEach(function(overlay) {
     overlay.addEventListener('click', function(e) {
       if (e.target === this) this.classList.remove('show');
     });
   });
 
+  // 在线/离线监听
+  window.addEventListener('online', updateOnlineStatus);
+  window.addEventListener('offline', updateOnlineStatus);
+  updateOnlineStatus();
+
+  // Canvas 彩带画布
+  initConfettiCanvas();
+  window.addEventListener('resize', function() {
+    if (confettiCanvas) {
+      confettiCanvas.width = window.innerWidth;
+      confettiCanvas.height = window.innerHeight;
+    }
+  });
+
   // Service Worker
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
-  }
+  registerSW();
+
+  // 初始化头像（从 IndexedDB 加载到缓存）
+  loadAvatar(function() {});
+
+  // 页面可见性变化时触发衰减
+  document.addEventListener('visibilitychange', function() {
+    if (!document.hidden) {
+      applyDecay();
+      renderHome();
+    }
+  });
+
+  console.log('Pet PWA v' + APP_VERSION + ' initialized');
 }
 
 document.addEventListener('DOMContentLoaded', init);
