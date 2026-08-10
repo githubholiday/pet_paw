@@ -1465,7 +1465,7 @@ body {
   position: fixed;
   bottom: calc(var(--tab-h) + 40px + var(--safe-bottom));
   left: 50%;
-  transform: translateX(-50%) translateY(100px);
+  transform: translateX(-50%) translateY(20px);
   background: rgba(0,0,0,0.8);
   color: white;
   padding: 12px 24px;
@@ -1473,10 +1473,18 @@ body {
   font-size: 14px;
   font-weight: 500;
   z-index: 999;
-  transition: transform 0.3s ease;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s ease;
   white-space: nowrap;
 }
-.toast.show { transform: translateX(-50%) translateY(0); }
+.toast.show {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
 
 /* ===== Online Indicator ===== */
 .online-indicator {
