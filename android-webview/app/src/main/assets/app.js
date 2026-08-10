@@ -1,5 +1,5 @@
 /* ================================================================
-   小宠打卡 (Pet PWA) — v2.1.0
+   小宠打卡 (Pet PWA) — v2.1.2
    小朋友的电子宠物打卡养成 APP
    ================================================================ */
 
@@ -7,7 +7,7 @@
 var STORAGE_KEY = 'pet-app-state';
 var PASSWORD_KEY = 'parent-password';
 var AVATAR_KEY = 'pet-app-avatar';
-var APP_VERSION = '2.1.1';
+var APP_VERSION = '2.1.2';
 var SCHEMA_VERSION = 3;
 
 /* ===== 集中配置 ===== */
