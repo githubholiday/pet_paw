@@ -1032,6 +1032,15 @@ body {
   color: var(--text);
   margin-bottom: 4px;
 }
+.product-desc {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-light);
+  background: var(--bg-soft, #f3f6f8);
+  border-radius: 6px;
+  padding: 3px 7px;
+  margin-bottom: 8px;
+}
 .product-meta {
   display: flex;
   align-items: center;

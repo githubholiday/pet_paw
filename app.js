@@ -8,7 +8,7 @@ function getParentPassword() {
 
 /* ===== Version & Config (升级与调参集中管理) ===== */
 const APP_VERSION = '2.0.0';      // 产品版本号（显示在"关于"）
-const SCHEMA_VERSION = 4;         // 数据架构版本（localStorage 结构）；升级结构时 +1
+const SCHEMA_VERSION = 5;         // 数据架构版本（localStorage 结构）；升级结构时 +1
 
 // 照顾宠物的花费（金币）——集中管理，方便平衡调整
 const COSTS = { feed: 10, bath: 8, play: 12, walk: 15 };
@@ -24,7 +24,7 @@ const TASK_MOOD_BONUS = 5;         // 完成任务额外心情加成
 
 // 单条数据字段默认值（用于旧数据补全，保证升级后不缺字段）
 const TASK_FIELDS = { emoji: '📝', points: 10, coins: 5, completed: false };
-const PRODUCT_FIELDS = { emoji: '🎁', price: 50, stock: 5, category: '玩具' };
+const PRODUCT_FIELDS = { emoji: '🎁', price: 50, stock: 5, category: '玩具', desc: '' };
 
 function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
 
@@ -61,7 +61,19 @@ function migrateState(parsed) {
     data.taskHistory = Array.isArray(data.taskHistory) ? data.taskHistory : [];
     data.schemaVersion = 4;
   }
-  // if (v < 3) { /* 例如重命名某字段 */ data.schemaVersion = 3; }
+  // v5：默认商店内容升级为家庭激励券（冰淇淋券 / 陪伴券 / 外出吃饭券 等）
+  if (v < 5) {
+    const LEGACY_PRODUCT_NAMES = ['小汽车玩具','拼图套装','故事书','冰淇淋券','动物园门票','绘本套装'];
+    const isLegacyDefaultStore = Array.isArray(data.products)
+      && data.products.length === LEGACY_PRODUCT_NAMES.length
+      && LEGACY_PRODUCT_NAMES.every(n => data.products.some(p => p.name === n));
+    if (isLegacyDefaultStore) {
+      // 仅当商店仍为出厂默认（未被家长自定义）时才整体替换，避免覆盖真实定制数据
+      data.products = DEFAULT_PRODUCTS.map(p => ({ ...p }));
+      data.nextProductId = Math.max(data.nextProductId || 0, DEFAULT_PRODUCTS.length + 1);
+    }
+    data.schemaVersion = 5;
+  }
   data.schemaVersion = SCHEMA_VERSION;
   return data;
 }
@@ -72,15 +84,16 @@ let setupFirst = '';  // first entered password during setup
 
 const EMOJIS = ['📝','📖','🎹','🧹','🎨','🏃','🎻','✏️','🔬','🧮','📐','🎯','🌟','💪','🎵','🖍️','📸','🎮','🧩','🚲','🍳','🧹','🌱','💧'];
 
-const PRODUCT_EMOJIS = ['🚗','🧩','📚','🍦','🦁','🎨','🧸','⚽','🖍️','🎭','📦','🎪','🍭','🎡','🪁','🎸','🍰','🐻','🎬','🧲','🖼️','🎲','🛴','📱'];
+const PRODUCT_EMOJIS = ['🚗','🧩','📚','🍦','🦁','🎨','🧸','⚽','🖍️','🎭','📦','🎪','🍭','🎡','🪁','🎸','🍰','🐻','🎬','🧲','🖼️','🎲','🛴','📱','🍽️','🗺️','👪','📅','🍴','💰'];
 
 const DEFAULT_PRODUCTS = [
-  { id: 1, name: '小汽车玩具', emoji: '🚗', price: 50, stock: 5, category: '玩具' },
-  { id: 2, name: '拼图套装', emoji: '🧩', price: 30, stock: 8, category: '玩具' },
-  { id: 3, name: '故事书', emoji: '📚', price: 40, stock: 3, category: '学习' },
-  { id: 4, name: '冰淇淋券', emoji: '🍦', price: 20, stock: 10, category: '零食' },
-  { id: 5, name: '动物园门票', emoji: '🦁', price: 100, stock: 2, category: '体验券' },
-  { id: 6, name: '绘本套装', emoji: '🎨', price: 60, stock: 0, category: '学习' },
+  { id: 1, name: '冰淇淋券', emoji: '🍦', price: 10, stock: 30, category: '零食' },
+  { id: 2, name: '自助午餐/晚餐券', emoji: '🍽️', price: 15, stock: 20, category: '体验券', desc: '需提前一天兑换' },
+  { id: 3, name: '寻宝游戏', emoji: '🗺️', price: 15, stock: 20, category: '体验券' },
+  { id: 4, name: '爸爸妈妈30分钟专属陪伴券', emoji: '👪', price: 10, stock: 30, category: '陪伴' },
+  { id: 5, name: '周末自主安排券', emoji: '📅', price: 20, stock: 20, category: '体验券' },
+  { id: 6, name: '外出吃饭券', emoji: '🍴', price: 40, stock: 10, category: '体验券' },
+  { id: 7, name: '兑换5元钱', emoji: '💰', price: 10, stock: 30, category: '奖励' },
 ];
 
 const DEFAULT_TASKS = [
@@ -102,9 +115,9 @@ const DEFAULT_STATE = {
   tasks: DEFAULT_TASKS,
   products: DEFAULT_PRODUCTS,
   exchanges: [
-    { id: 'EX20260803', product: '绘本套装', emoji: '🎨', points: 60, date: '2026-08-03', status: 'verified' },
-    { id: 'EX20260804', product: '冰淇淋券', emoji: '🍦', points: 20, date: '2026-08-04', status: 'pending' },
-    { id: 'EX20260805', product: '小汽车玩具', emoji: '🚗', points: 50, date: '2026-08-04', status: 'pending' },
+    { id: 'EX20260803', product: '爸爸妈妈30分钟专属陪伴券', emoji: '👪', points: 10, date: '2026-08-03', status: 'verified' },
+    { id: 'EX20260804', product: '冰淇淋券', emoji: '🍦', points: 10, date: '2026-08-04', status: 'pending' },
+    { id: 'EX20260805', product: '外出吃饭券', emoji: '🍴', points: 40, date: '2026-08-04', status: 'pending' },
   ],
   stats: { totalTasks: 42, totalPoints: 320, totalCoins: 180 },
   parentMode: false,
@@ -113,7 +126,7 @@ const DEFAULT_STATE = {
   lastCompletedDate: '',
   taskHistory: [],   // 每日完成快照: [{ date, taskNames: ['数学作业','阅读'], points, coins }]
   nextTaskId: 5,
-  nextProductId: 7,
+  nextProductId: 8,
   profile: { name: '小图', avatar: '' },
 };
 
@@ -460,6 +473,7 @@ function openProductEditor(productId) {
     document.getElementById('product-price-input').value = product.price;
     document.getElementById('product-stock-input').value = product.stock;
     document.getElementById('product-category-input').value = product.category;
+    document.getElementById('product-desc-input').value = product.desc || '';
     deleteBtn.style.display = 'block';
 
     grid.querySelectorAll('.emoji-item').forEach(b => {
@@ -471,6 +485,7 @@ function openProductEditor(productId) {
     document.getElementById('product-price-input').value = '50';
     document.getElementById('product-stock-input').value = '5';
     document.getElementById('product-category-input').value = '玩具';
+    document.getElementById('product-desc-input').value = '';
     deleteBtn.style.display = 'none';
     grid.querySelector('.emoji-item')?.classList.add('selected');
   }
@@ -489,6 +504,7 @@ function saveProduct() {
   const price = parseInt(document.getElementById('product-price-input').value) || 1;
   const stock = parseInt(document.getElementById('product-stock-input').value) || 0;
   const category = document.getElementById('product-category-input').value;
+  const desc = document.getElementById('product-desc-input').value.trim();
   if (!name) { showToast('请输入商品名称'); return; }
 
   const selectedBtn = document.querySelector('#product-emoji-grid .emoji-item.selected');
@@ -502,11 +518,12 @@ function saveProduct() {
       product.price = price;
       product.stock = stock;
       product.category = category;
+      product.desc = desc;
     }
   } else {
     state.products.push({
       id: state.nextProductId++,
-      name, emoji, price, stock, category,
+      name, emoji, price, stock, category, desc,
     });
   }
 
@@ -669,6 +686,7 @@ function renderShop() {
       <div class="product-img">${product.emoji}</div>
       <div class="product-info">
         <div class="product-name">${product.name}</div>
+        ${product.desc ? `<div class="product-desc">${product.desc}</div>` : ''}
         <div class="product-meta">
           <span class="product-price">⭐ ${product.price}</span>
           <span class="product-stock${stockClass}">${stockText}</span>
