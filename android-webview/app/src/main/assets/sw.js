@@ -1,7 +1,7 @@
 // Service Worker - 小宠打卡 PWA
 // ⚠️ 每次修改 styles.css / app.js / index.html 后，务必升级下面的 CACHE_NAME
 //    （或同步升级页面上的 ?v= 参数），否则手机端会一直用旧缓存、看不到更新。
-const CACHE_NAME = 'pet-app-v2.0.12';
+const CACHE_NAME = 'pet-app-v2.0.2';
 const ASSETS = [
   './',
   './index.html',

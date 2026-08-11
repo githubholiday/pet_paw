@@ -8,7 +8,7 @@ function getParentPassword() {
 
 /* ===== Version & Config (升级与调参集中管理) ===== */
 const APP_VERSION = '2.0.0';      // 产品版本号（显示在"关于"）
-const SCHEMA_VERSION = 2;         // 数据架构版本（localStorage 结构）；升级结构时 +1
+const SCHEMA_VERSION = 4;         // 数据架构版本（localStorage 结构）；升级结构时 +1
 
 // 照顾宠物的花费（金币）——集中管理，方便平衡调整
 const COSTS = { feed: 10, bath: 8, play: 12, walk: 15 };
@@ -28,6 +28,12 @@ const PRODUCT_FIELDS = { emoji: '🎁', price: 50, stock: 5, category: '玩具' 
 
 function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
 
+/* ===== Pet Level ===== */
+// 等级曲线：每级所需任务数递增，前期快后期慢
+function computePetLevel(totalTasks) {
+  return Math.floor(Math.sqrt(totalTasks)) + 1;
+}
+
 // 把一次照顾操作应用到宠物状态
 function applyPetEffects(effects) {
   const p = state.pet;
@@ -46,6 +52,15 @@ function migrateState(parsed) {
   const v = data.schemaVersion || 0;   // 0 = 早期无版本数据
   // —— 升级模板（未来启用，示例）——
   // if (v < 2) { /* 例如给 pet 增加 happiness 字段 */ data.schemaVersion = 2; }
+  if (v < 3) {
+    data.totalDays = data.totalDays || 0;
+    data.lastCompletedDate = data.lastCompletedDate || '';
+    data.schemaVersion = 3;
+  }
+  if (v < 4) {
+    data.taskHistory = Array.isArray(data.taskHistory) ? data.taskHistory : [];
+    data.schemaVersion = 4;
+  }
   // if (v < 3) { /* 例如重命名某字段 */ data.schemaVersion = 3; }
   data.schemaVersion = SCHEMA_VERSION;
   return data;
@@ -69,20 +84,20 @@ const DEFAULT_PRODUCTS = [
 ];
 
 const DEFAULT_TASKS = [
-  { id: 1, name: '完成数学作业', emoji: '📝', points: 10, coins: 5, completed: false },
-  { id: 2, name: '阅读30分钟', emoji: '📖', points: 15, coins: 5, completed: false },
-  { id: 3, name: '练习钢琴', emoji: '🎹', points: 20, coins: 10, completed: false },
-  { id: 4, name: '整理书桌', emoji: '🧹', points: 5, coins: 3, completed: false },
+  { id: 1, name: '叫叫阅读', emoji: '📖', points: 1, coins: 5, completed: false },
+  { id: 2, name: '口算练习', emoji: '🧮', points: 1, coins: 5, completed: false },
+  { id: 3, name: '古诗背诵', emoji: '📜', points: 1, coins: 5, completed: false },
+  { id: 4, name: '整理玩具和书桌', emoji: '🧹', points: 1, coins: 5, completed: false },
 ];
 
 const DEFAULT_STATE = {
   schemaVersion: SCHEMA_VERSION,
   pet: {
-    name: '小宠', emoji: '🐱', level: 5,
+    name: '小宠', emoji: '🐱',
     hunger: 75, clean: 85, mood: 80, energy: 70,
     lastUpdate: Date.now(),
   },
-  points: 120, coins: 320,
+  points: 120, coins: 100,
   streak: 7, streakDate: new Date().toDateString(),
   tasks: DEFAULT_TASKS,
   products: DEFAULT_PRODUCTS,
@@ -94,6 +109,9 @@ const DEFAULT_STATE = {
   stats: { totalTasks: 42, totalPoints: 320, totalCoins: 180 },
   parentMode: false,
   lastTaskDate: new Date().toDateString(),
+  totalDays: 1,
+  lastCompletedDate: '',
+  taskHistory: [],   // 每日完成快照: [{ date, taskNames: ['数学作业','阅读'], points, coins }]
   nextTaskId: 5,
   nextProductId: 7,
   profile: { name: '小图', avatar: '' },
@@ -136,6 +154,10 @@ function saveState() {
    loadState 发现无数据 → 自动载入 DEFAULT_STATE（默认任务/商品/宠物，0 积分金币）。
    等价于把当前设备还原成刚装好的样子，常用于换孩子/清测试数据。 */
 function resetAllData() {
+  if (!state.parentMode) {
+    showToast('请先开启家长模式');
+    return;
+  }
   if (!confirm(
     '确定要恢复出厂设置吗？\n\n'
     + '将清空全部数据：任务、商品、宠物状态、积分、金币、兑换记录，\n'
@@ -168,6 +190,23 @@ function applyDecay() {
 function checkDailyReset() {
   const today = new Date().toDateString();
   if (state.lastTaskDate !== today) {
+    // 快照：把昨天完成的任务记录到历史
+    const completedToday = state.tasks.filter(t => t.completed);
+    if (completedToday.length > 0) {
+      const dayPoints = completedToday.reduce((s, t) => s + t.points, 0);
+      const dayCoins = completedToday.reduce((s, t) => s + t.coins, 0);
+      state.taskHistory.push({
+        date: state.lastTaskDate,
+        taskNames: completedToday.map(t => t.name),
+        points: dayPoints,
+        coins: dayCoins,
+        count: completedToday.length,
+      });
+      // 保留最近 90 天
+      if (state.taskHistory.length > 90) {
+        state.taskHistory = state.taskHistory.slice(-90);
+      }
+    }
     state.tasks.forEach(t => t.completed = false);
     state.lastTaskDate = today;
     const yesterday = new Date(Date.now() - 86400000).toDateString();
@@ -514,7 +553,7 @@ function renderHome() {
   const moodIdx = Math.min(Math.floor(moodAvg / 25), 4);
   document.getElementById('pet-mood').textContent = moods[moodIdx];
   document.getElementById('pet-name').textContent = state.pet.name;
-  document.getElementById('pet-level').textContent = 'Lv.' + state.pet.level;
+  document.getElementById('pet-level').textContent = 'Lv.' + computePetLevel(state.stats.totalTasks);
   updateStatusBar('hunger', state.pet.hunger, '#FF8C7A');
   updateStatusBar('clean', state.pet.clean, '#6BB6E0');
   updateStatusBar('mood', state.pet.mood, '#FFC857');
@@ -580,6 +619,7 @@ function renderTasks() {
   document.getElementById('summary-completed').textContent = `${completed}/${state.tasks.length}`;
   document.getElementById('summary-points').textContent = state.tasks.filter(t => t.completed).reduce((s, t) => s + t.points, 0);
   document.getElementById('summary-coins').textContent = state.tasks.filter(t => t.completed).reduce((s, t) => s + t.coins, 0);
+  document.getElementById('summary-days').textContent = state.totalDays || 0;
 }
 
 function deleteTaskById(taskId) {
@@ -663,19 +703,31 @@ function deleteProductById(productId) {
 /* ===== Render: Profile ===== */
 function renderProfile() {
   document.getElementById('profile-name').textContent = state.profile.name || '小图';
-  document.getElementById('profile-level').textContent = `Lv.${state.pet.level} 宠物达人`;
+  const lv = computePetLevel(state.stats.totalTasks);
+  document.getElementById('profile-level').textContent = `Lv.${lv} 宠物达人`;
   renderProfileAvatar();
   document.getElementById('stat-tasks').textContent = state.stats.totalTasks;
   document.getElementById('stat-points').textContent = state.stats.totalPoints;
   document.getElementById('stat-coins').textContent = state.stats.totalCoins;
 
-  // Exchange history
+  // 现有余额（扣除兑换和使用后的净额）
+  document.getElementById('stat-available-points').textContent = state.points;
+  document.getElementById('stat-available-coins').textContent = state.coins;
+
+  // Exchange history (最多显示3条，其余折叠)
   const histList = document.getElementById('history-list');
   histList.innerHTML = '';
-  if (state.exchanges.length === 0) {
+  const allExchanges = state.exchanges.slice().reverse();
+  if (allExchanges.length === 0) {
     histList.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-light);font-size:14px;">还没有兑换记录哦~</div>';
   } else {
-    state.exchanges.slice().reverse().forEach(ex => {
+    const showToggle = allExchanges.length > 3;
+    const wasExpanded = histList.dataset.expanded === 'true';
+    const visible = wasExpanded ? allExchanges : allExchanges.slice(0, 3);
+
+    const container = document.createElement('div');
+    container.className = 'history-inner';
+    visible.forEach(ex => {
       const item = document.createElement('div');
       item.className = 'history-item';
       const isPending = ex.status === 'pending';
@@ -692,8 +744,22 @@ function renderProfile() {
           : `<span class="history-status ${ex.status}">${isPending ? '待核销' : '已核销'}</span>`
         }
       `;
-      histList.appendChild(item);
+      container.appendChild(item);
     });
+    histList.appendChild(container);
+
+    if (showToggle) {
+      const toggle = document.createElement('div');
+      toggle.className = 'history-expand';
+      toggle.textContent = wasExpanded ? '收起 ▲' : `展开全部 (${allExchanges.length}条) ▼`;
+      toggle.onclick = function() {
+        histList.dataset.expanded = wasExpanded ? 'false' : 'true';
+        renderProfile();
+      };
+      histList.appendChild(toggle);
+    } else {
+      histList.dataset.expanded = 'false';
+    }
   }
 
   // Settings
@@ -839,9 +905,17 @@ function completeTask(taskId) {
   task.completed = true;
   state.points += task.points;
   state.coins += task.coins;
+  const oldLevel = computePetLevel(state.stats.totalTasks);
   state.stats.totalTasks += 1;
   state.stats.totalPoints += task.points;
   state.stats.totalCoins += task.coins;
+  const newLevel = computePetLevel(state.stats.totalTasks);
+  // 累计打卡天数：每日首次完成任务时 +1
+  const todayStr = new Date().toDateString();
+  if (state.lastCompletedDate !== todayStr) {
+    state.totalDays = (state.totalDays || 0) + 1;
+    state.lastCompletedDate = todayStr;
+  }
   if (state.tasks.every(t => t.completed)) {
     if (state.streakDate !== new Date().toDateString()) {
       state.streak += 1;
@@ -852,6 +926,9 @@ function completeTask(taskId) {
   saveState();
   showTaskPopup(task);
   fireConfetti();
+  if (newLevel > oldLevel) {
+    setTimeout(() => showToast(`🎉 小宠升到 Lv.${newLevel} 啦！`), 1200);
+  }
 }
 
 function feedPet() {

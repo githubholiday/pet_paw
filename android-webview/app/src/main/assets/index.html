@@ -29,8 +29,56 @@
     <button class="exit-btn" onclick="exitParentMode()">退出</button>
   </div>
 
+  <!-- ===== Task Page ===== -->
+  <div class="page active" id="page-tasks">
+    <div class="status-bar">
+      <span class="status-time">9:41</span>
+      <div class="icons">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.18L12 21z"/></svg>
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/></svg>
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z"/></svg>
+      </div>
+    </div>
+
+    <div class="page-header">
+      <div class="page-title">今日任务</div>
+      <span class="badge badge-points">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 16.8l-6.2 4.5 2.4-7.4L2 9.4h7.6z"/></svg>
+        <span id="task-points">120</span>
+      </span>
+    </div>
+    <div class="page-subtitle">完成任务获得积分和金币，积分可到商店兑换奖品，金币用于照顾宠物</div>
+
+    <div class="task-list" id="task-list"></div>
+    <button class="add-button" id="add-task-btn" style="display:none" onclick="openTaskEditor()">
+      + 添加新任务
+    </button>
+
+    <div class="daily-summary">
+      <div class="summary-row">
+        <div class="summary-item">
+          <div class="summary-num" id="summary-completed">0/4</div>
+          <div class="summary-label">完成任务</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-num" id="summary-points">0</div>
+          <div class="summary-label">今日积分</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-num" id="summary-coins">0</div>
+          <div class="summary-label">今日金币</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-num" id="summary-days">0</div>
+          <div class="summary-label">累计打卡</div>
+        </div>
+      </div>
+      <div class="summary-tip">💡 每天完成任务，照顾小宠，还能去商店兑换奖品哦~</div>
+    </div>
+  </div>
+
   <!-- ===== Home Page ===== -->
-  <div class="page active" id="page-home">
+  <div class="page" id="page-home">
     <div class="status-bar">
       <span class="status-time">9:41</span>
       <div class="icons">
@@ -196,50 +244,6 @@
     </div>
   </div>
 
-  <!-- ===== Task Page ===== -->
-  <div class="page" id="page-tasks">
-    <div class="status-bar">
-      <span class="status-time">9:41</span>
-      <div class="icons">
-        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.18L12 21z"/></svg>
-        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/></svg>
-        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z"/></svg>
-      </div>
-    </div>
-
-    <div class="page-header">
-      <div class="page-title">今日任务</div>
-      <span class="badge badge-points">
-        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 16.8l-6.2 4.5 2.4-7.4L2 9.4h7.6z"/></svg>
-        <span id="task-points">120</span>
-      </span>
-    </div>
-    <div class="page-subtitle">完成任务获得积分和金币，积分可到商店兑换奖品，金币用于照顾宠物</div>
-
-    <div class="task-list" id="task-list"></div>
-    <button class="add-button" id="add-task-btn" style="display:none" onclick="openTaskEditor()">
-      + 添加新任务
-    </button>
-
-    <div class="daily-summary">
-      <div class="summary-row">
-        <div class="summary-item">
-          <div class="summary-num" id="summary-completed">0/4</div>
-          <div class="summary-label">完成任务</div>
-        </div>
-        <div class="summary-item">
-          <div class="summary-num" id="summary-points">0</div>
-          <div class="summary-label">今日积分</div>
-        </div>
-        <div class="summary-item">
-          <div class="summary-num" id="summary-coins">0</div>
-          <div class="summary-label">今日金币</div>
-        </div>
-      </div>
-      <div class="summary-tip">💡 每天完成任务，照顾小宠，还能去商店兑换奖品哦~</div>
-    </div>
-  </div>
-
   <!-- ===== Shop Page ===== -->
   <div class="page" id="page-shop">
     <div class="status-bar">
@@ -299,6 +303,16 @@
     </div>
     <input type="file" id="avatar-file" accept="image/*" style="display:none" onchange="handleAvatarFile(this)">
 
+    <div class="stats-row stats-available">
+      <div class="stat-item">
+        <div class="stat-num" id="stat-available-points" style="color:var(--primary)">0</div>
+        <div class="stat-label">现有积分</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num" id="stat-available-coins" style="color:var(--gold)">0</div>
+        <div class="stat-label">现有金币</div>
+      </div>
+    </div>
     <div class="stats-row">
       <div class="stat-item">
         <div class="stat-num" id="stat-tasks">42</div>
@@ -370,13 +384,13 @@
 
   <!-- ===== Bottom Tab Bar ===== -->
   <div class="tab-bar">
-    <button class="tab-item active" data-tab="home">
-      <span class="tab-icon">🏠</span>
-      <span class="tab-label">首页</span>
-    </button>
-    <button class="tab-item" data-tab="tasks">
+    <button class="tab-item active" data-tab="tasks">
       <span class="tab-icon">📋</span>
       <span class="tab-label">任务</span>
+    </button>
+    <button class="tab-item" data-tab="home">
+      <span class="tab-icon">🏠</span>
+      <span class="tab-label">宠物</span>
     </button>
     <button class="tab-item" data-tab="shop">
       <span class="tab-icon">🎁</span>
@@ -471,11 +485,11 @@
     <div class="form-row">
       <div class="form-group">
         <label class="form-label">积分奖励 ⭐</label>
-        <input class="form-input" id="task-points-input" type="number" min="1" value="10" placeholder="积分">
+        <input class="form-input" id="task-points-input" type="number" min="1" value="2" placeholder="积分">
       </div>
       <div class="form-group">
         <label class="form-label">金币奖励 🪙</label>
-        <input class="form-input" id="task-coins-input" type="number" min="0" value="5" placeholder="金币">
+        <input class="form-input" id="task-coins-input" type="number" min="0" value="10" placeholder="金币">
       </div>
     </div>
     <div class="edit-actions">
