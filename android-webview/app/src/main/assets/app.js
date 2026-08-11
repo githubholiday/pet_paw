@@ -1210,10 +1210,22 @@ function exportBackup() {
     const reader = new FileReader();
     reader.onload = function () {
       const base64 = reader.result.split(',')[1];
-      window.AndroidBridge.saveFile(fileName, base64);
+      let res;
+      try {
+        res = window.AndroidBridge.saveFile(fileName, base64); // 同步返回 "OK:..." / "ERR:..."
+      } catch (e) {
+        res = 'ERR:' + (e && e.message ? e.message : e);
+      }
+      if (typeof res === 'string' && res.indexOf('OK:') === 0) {
+        showToast('✅ 已导出到下载目录：' + fileName);
+      } else if (typeof res === 'string' && res.indexOf('ERR:') === 0) {
+        showToast('❌ 导出失败：' + res.slice(4));
+      } else {
+        showToast('✅ 备份已导出（见系统提示）');
+      }
     };
+    reader.onerror = function () { showToast('❌ 读取备份数据失败'); };
     reader.readAsDataURL(blob);
-    showToast('✅ 备份已导出（见系统提示的保存位置）');
     return;
   }
 

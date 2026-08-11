@@ -21,6 +21,7 @@ import android.widget.Toast;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.OutputStream;
 
 public class MainActivity extends Activity {
@@ -116,13 +117,14 @@ public class MainActivity extends Activity {
         webView.loadUrl("file:///android_asset/index.html");
     }
 
-    /** JS 导出备份时由 exportBackup() 调用，把 base64 内容写入下载目录 */
+    /** JS 导出备份时由 exportBackup() 调用，把 base64 内容写入下载目录。
+     *  返回 "OK:<位置>" 或 "ERR:<原因>"，由 JS 据此弹窗，避免"假成功"。 */
     public class AndroidBridge {
         @JavascriptInterface
-        public void saveFile(String fileName, String base64Content) {
+        public String saveFile(String fileName, String base64Content) {
+            OutputStream out = null;
             try {
                 byte[] data = android.util.Base64.decode(base64Content, android.util.Base64.DEFAULT);
-                OutputStream out;
                 String location;
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     // Android 10+：用 MediaStore 写公共下载目录，无需存储权限
@@ -130,8 +132,9 @@ public class MainActivity extends Activity {
                     values.put(MediaStore.Downloads.DISPLAY_NAME, fileName);
                     values.put(MediaStore.Downloads.MIME_TYPE, "application/json");
                     Uri itemUri = getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values);
+                    if (itemUri == null) throw new IOException("无法在下载目录创建文件");
                     out = getContentResolver().openOutputStream(itemUri);
-                    location = "下载目录";
+                    location = "系统下载目录";
                 } else {
                     // 旧系统：写应用私有下载目录（无需权限）
                     File dir = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS);
@@ -141,13 +144,13 @@ public class MainActivity extends Activity {
                     location = file.getAbsolutePath();
                 }
                 out.write(data);
-                out.close();
-                final String msg = location;
-                runOnUiThread(() -> Toast.makeText(MainActivity.this,
-                        "✅ 已导出到" + msg + "：" + fileName, Toast.LENGTH_LONG).show());
+                return "OK:" + location;
             } catch (Exception e) {
-                runOnUiThread(() -> Toast.makeText(MainActivity.this,
-                        "❌ 导出失败：" + e.getMessage(), Toast.LENGTH_LONG).show());
+                return "ERR:" + (e.getMessage() != null ? e.getMessage() : e.toString());
+            } finally {
+                if (out != null) {
+                    try { out.close(); } catch (Exception ignored) {}
+                }
             }
         }
     }
