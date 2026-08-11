@@ -1,0 +1,17 @@
+✅ 已完成
+离线 APK 出包成功 —— 你已在 GitHub Actions 跑通 Build Offline APK (WebView)，产出 app-release.apk（完全离线、运行时不联网）。这事已记进项目记忆。
+一键同步脚本 pet-pwa/sync_assets.bat 已写好并验证。
+📦 以后更新内容的节奏（全链路）
+改完 pet-pwa 根目录的网页后，双击 sync_assets.bat 就行：
+
+自动把 index.html / app.js / styles.css 同步进 android-webview/app/src/main/assets/
+自动剥掉 ?v=N 版本号（离线包里带版本号会让 CSS/JS 加载失败，已验证）
+问你要不要提交推送 → 输 Y 自动 git push，触发 workflow 自动重出包；输 N 只本地同步，你之后自己 push
+去 GitHub Actions 下载新的 child-pet-offline-apk 安装即可
+⚠️ 两点提醒
+脚本用的是相对路径、纯英文，避开了中文路径在 .bat 里的编码坑，直接双击就能跑（不用 Git Bash）。
+重出的包是新 APK，手机上要重新安装覆盖（离线包不自动更新，这是 WebView 内置方案的固有特性）。
+需要的话，我还能帮你：
+
+把宠物形象做成更精致的矢量 App 图标嵌进 android-webview（现在是占位图标）；
+或写一个本地预览脚本，改完网页先在本机浏览器看效果再出包。
