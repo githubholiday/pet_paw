@@ -12,11 +12,21 @@ android {
         versionName "2.0.0"
     }
 
+    signingConfigs {
+        release {
+            // 固定签名：保证每次构建签名一致，APK 可直接覆盖安装（无需卸载）
+            storeFile file("../keystore/release.keystore")
+            storePassword "petpaw2026"
+            keyAlias "petpaw"
+            keyPassword "petpaw2026"
+            storeType "PKCS12"
+        }
+    }
+
     buildTypes {
         release {
             minifyEnabled false
-            // debug 签名即可直接安装，无需自己生成 keystore
-            signingConfig signingConfigs.debug
+            signingConfig signingConfigs.release
         }
     }
 

@@ -10,6 +10,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # 首次构建时自动提交固定签名 keystore 到仓库
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -19,6 +21,33 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+
+      - name: Ensure fixed signing keystore
+        run: |
+          KEYSTORE=android-webview/keystore/release.keystore
+          if [ -f "$KEYSTORE" ]; then
+            echo "keystore 已存在，复用固定签名"
+          else
+            mkdir -p android-webview/keystore
+            keytool -genkeypair -v \
+              -keystore "$KEYSTORE" -storetype PKCS12 \
+              -alias petpaw -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass petpaw2026 -keypass petpaw2026 \
+              -dname "CN=PetPaw, OU=Family, O=PetPaw, L=Home, S=Home, C=CN"
+            echo "KEYSTORE_NEW=true" >> "$GITHUB_ENV"
+            echo "已生成固定签名 keystore"
+          fi
+
+      - name: Commit keystore back to repo
+        if: env.KEYSTORE_NEW == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add android-webview/keystore/release.keystore
+          git commit -m "chore: add fixed signing keystore [skip ci]"
+          git push origin HEAD
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install Gradle 8.6
         run: |
