@@ -2,17 +2,32 @@ package com.childpet.app;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.ContentValues;
+import android.content.Intent;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
+import android.provider.MediaStore;
+import android.webkit.JavascriptInterface;
 import android.webkit.JsResult;
+import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.EditText;
+import android.widget.Toast;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.OutputStream;
 
 public class MainActivity extends Activity {
 
     private WebView webView;
+    private static final int FILECHOOSER_RESULTCODE = 1001;
+    private ValueCallback<Uri[]> uploadMessage;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -28,6 +43,9 @@ public class MainActivity extends Activity {
         ws.setAllowFileAccess(true);
         ws.setMediaPlaybackRequiresUserGesture(false);
         ws.setJavaScriptCanOpenWindowsAutomatically(true);
+        // 允许 <input type="file"> 选择本地文件（导入备份需要）
+        ws.setAllowFileAccessFromFileURLs(true);
+        ws.setAllowUniversalAccessFromFileURLs(true);
 
         // 拦截链接在应用内打开，不跳浏览器
         webView.setWebViewClient(new WebViewClient());
@@ -73,10 +91,82 @@ public class MainActivity extends Activity {
                         .show();
                 return true;
             }
+
+            // 让 <input type="file">（导入备份）能打开系统文件选择器
+            @Override
+            public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback,
+                                             WebChromeClient.FileChooserParams fileChooserParams) {
+                uploadMessage = filePathCallback;
+                try {
+                    Intent intent = fileChooserParams.createIntent();
+                    startActivityForResult(intent, FILECHOOSER_RESULTCODE);
+                } catch (Exception e) {
+                    uploadMessage = null;
+                    Toast.makeText(MainActivity.this, "无法打开文件选择器", Toast.LENGTH_LONG).show();
+                    return false;
+                }
+                return true;
+            }
         });
+
+        // 原生桥接：JS 调用 Android 把备份写到下载目录（WebView 不支持 a.download）
+        webView.addJavascriptInterface(new AndroidBridge(), "AndroidBridge");
 
         // 加载打包进 APK 的网站（完全离线，无需服务器 / GitHub）
         webView.loadUrl("file:///android_asset/index.html");
+    }
+
+    /** JS 导出备份时由 exportBackup() 调用，把 base64 内容写入下载目录 */
+    public class AndroidBridge {
+        @JavascriptInterface
+        public void saveFile(String fileName, String base64Content) {
+            try {
+                byte[] data = android.util.Base64.decode(base64Content, android.util.Base64.DEFAULT);
+                OutputStream out;
+                String location;
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    // Android 10+：用 MediaStore 写公共下载目录，无需存储权限
+                    ContentValues values = new ContentValues();
+                    values.put(MediaStore.Downloads.DISPLAY_NAME, fileName);
+                    values.put(MediaStore.Downloads.MIME_TYPE, "application/json");
+                    Uri itemUri = getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values);
+                    out = getContentResolver().openOutputStream(itemUri);
+                    location = "下载目录";
+                } else {
+                    // 旧系统：写应用私有下载目录（无需权限）
+                    File dir = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS);
+                    if (dir != null && !dir.exists()) dir.mkdirs();
+                    File file = new File(dir, fileName);
+                    out = new FileOutputStream(file);
+                    location = file.getAbsolutePath();
+                }
+                out.write(data);
+                out.close();
+                final String msg = location;
+                runOnUiThread(() -> Toast.makeText(MainActivity.this,
+                        "✅ 已导出到" + msg + "：" + fileName, Toast.LENGTH_LONG).show());
+            } catch (Exception e) {
+                runOnUiThread(() -> Toast.makeText(MainActivity.this,
+                        "❌ 导出失败：" + e.getMessage(), Toast.LENGTH_LONG).show());
+            }
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == FILECHOOSER_RESULTCODE) {
+            Uri[] results = null;
+            if (resultCode == Activity.RESULT_OK && data != null) {
+                String dataString = data.getDataString();
+                if (dataString != null) results = new Uri[]{ Uri.parse(dataString) };
+            }
+            if (uploadMessage != null) {
+                uploadMessage.onReceiveValue(results);
+                uploadMessage = null;
+            }
+            return;
+        }
+        super.onActivityResult(requestCode, resultCode, data);
     }
 
     @Override

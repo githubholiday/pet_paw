@@ -1203,10 +1203,25 @@ function exportBackup() {
     password: getParentPassword(),
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const fileName = '小宠打卡备份_' + new Date().toISOString().slice(0, 10) + '.json';
+
+  // 安卓 WebView 内：a.download 不生效，改用原生桥接写入下载目录
+  if (window.AndroidBridge && window.AndroidBridge.saveFile) {
+    const reader = new FileReader();
+    reader.onload = function () {
+      const base64 = reader.result.split(',')[1];
+      window.AndroidBridge.saveFile(fileName, base64);
+    };
+    reader.readAsDataURL(blob);
+    showToast('✅ 备份已导出（见系统提示的保存位置）');
+    return;
+  }
+
+  // 浏览器 / PWA：普通下载
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = '小宠打卡备份_' + new Date().toISOString().slice(0, 10) + '.json';
+  a.download = fileName;
   document.body.appendChild(a);
   a.click();
   a.remove();

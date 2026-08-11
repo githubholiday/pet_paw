@@ -24,7 +24,7 @@ const TASK_MOOD_BONUS = 5;         // 完成任务额外心情加成
 
 // 单条数据字段默认值（用于旧数据补全，保证升级后不缺字段）
 const TASK_FIELDS = { emoji: '📝', points: 10, coins: 5, completed: false };
-const PRODUCT_FIELDS = { emoji: '🎁', price: 50, stock: 5, category: '玩具' };
+const PRODUCT_FIELDS = { emoji: '🎁', price: 50, stock: 5, category: '玩具', desc: '' };
 
 function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
 
@@ -88,7 +88,7 @@ const PRODUCT_EMOJIS = ['🚗','🧩','📚','🍦','🦁','🎨','🧸','⚽','
 
 const DEFAULT_PRODUCTS = [
   { id: 1, name: '冰淇淋券', emoji: '🍦', price: 10, stock: 30, category: '零食' },
-  { id: 2, name: '自助午餐/晚餐券（提前一天兑换）', emoji: '🍽️', price: 15, stock: 20, category: '体验券' },
+  { id: 2, name: '自助午餐/晚餐券', emoji: '🍽️', price: 15, stock: 20, category: '体验券', desc: '需提前一天兑换' },
   { id: 3, name: '寻宝游戏', emoji: '🗺️', price: 15, stock: 20, category: '体验券' },
   { id: 4, name: '爸爸妈妈30分钟专属陪伴券', emoji: '👪', price: 10, stock: 30, category: '陪伴' },
   { id: 5, name: '周末自主安排券', emoji: '📅', price: 20, stock: 20, category: '体验券' },
@@ -473,6 +473,7 @@ function openProductEditor(productId) {
     document.getElementById('product-price-input').value = product.price;
     document.getElementById('product-stock-input').value = product.stock;
     document.getElementById('product-category-input').value = product.category;
+    document.getElementById('product-desc-input').value = product.desc || '';
     deleteBtn.style.display = 'block';
 
     grid.querySelectorAll('.emoji-item').forEach(b => {
@@ -484,6 +485,7 @@ function openProductEditor(productId) {
     document.getElementById('product-price-input').value = '50';
     document.getElementById('product-stock-input').value = '5';
     document.getElementById('product-category-input').value = '玩具';
+    document.getElementById('product-desc-input').value = '';
     deleteBtn.style.display = 'none';
     grid.querySelector('.emoji-item')?.classList.add('selected');
   }
@@ -502,6 +504,7 @@ function saveProduct() {
   const price = parseInt(document.getElementById('product-price-input').value) || 1;
   const stock = parseInt(document.getElementById('product-stock-input').value) || 0;
   const category = document.getElementById('product-category-input').value;
+  const desc = document.getElementById('product-desc-input').value.trim();
   if (!name) { showToast('请输入商品名称'); return; }
 
   const selectedBtn = document.querySelector('#product-emoji-grid .emoji-item.selected');
@@ -515,11 +518,12 @@ function saveProduct() {
       product.price = price;
       product.stock = stock;
       product.category = category;
+      product.desc = desc;
     }
   } else {
     state.products.push({
       id: state.nextProductId++,
-      name, emoji, price, stock, category,
+      name, emoji, price, stock, category, desc,
     });
   }
 
@@ -682,6 +686,7 @@ function renderShop() {
       <div class="product-img">${product.emoji}</div>
       <div class="product-info">
         <div class="product-name">${product.name}</div>
+        ${product.desc ? `<div class="product-desc">${product.desc}</div>` : ''}
         <div class="product-meta">
           <span class="product-price">⭐ ${product.price}</span>
           <span class="product-stock${stockClass}">${stockText}</span>
@@ -1198,10 +1203,25 @@ function exportBackup() {
     password: getParentPassword(),
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const fileName = '小宠打卡备份_' + new Date().toISOString().slice(0, 10) + '.json';
+
+  // 安卓 WebView 内：a.download 不生效，改用原生桥接写入下载目录
+  if (window.AndroidBridge && window.AndroidBridge.saveFile) {
+    const reader = new FileReader();
+    reader.onload = function () {
+      const base64 = reader.result.split(',')[1];
+      window.AndroidBridge.saveFile(fileName, base64);
+    };
+    reader.readAsDataURL(blob);
+    showToast('✅ 备份已导出（见系统提示的保存位置）');
+    return;
+  }
+
+  // 浏览器 / PWA：普通下载
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = '小宠打卡备份_' + new Date().toISOString().slice(0, 10) + '.json';
+  a.download = fileName;
   document.body.appendChild(a);
   a.click();
   a.remove();
