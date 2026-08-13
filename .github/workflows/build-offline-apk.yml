@@ -10,8 +10,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write   # 首次构建时自动提交固定签名 keystore 到仓库
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -22,32 +20,23 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Ensure fixed signing keystore
-        run: |
-          KEYSTORE=android-webview/keystore/release.keystore
-          if [ -f "$KEYSTORE" ]; then
-            echo "keystore 已存在，复用固定签名"
-          else
-            mkdir -p android-webview/keystore
-            keytool -genkeypair -v \
-              -keystore "$KEYSTORE" -storetype PKCS12 \
-              -alias petpaw -keyalg RSA -keysize 2048 -validity 10000 \
-              -storepass petpaw2026 -keypass petpaw2026 \
-              -dname "CN=PetPaw, OU=Family, O=PetPaw, L=Home, S=Home, C=CN"
-            echo "KEYSTORE_NEW=true" >> "$GITHUB_ENV"
-            echo "已生成固定签名 keystore"
-          fi
+      - name: Cache signing keystore
+        uses: actions/cache@v4
+        id: keystore-cache
+        with:
+          path: android-webview/keystore/release.keystore
+          key: petpaw-keystore-v1
 
-      - name: Commit keystore back to repo
-        if: env.KEYSTORE_NEW == 'true'
+      - name: Ensure fixed signing keystore
+        if: steps.keystore-cache.outputs.cache-hit != 'true'
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add android-webview/keystore/release.keystore
-          git commit -m "chore: add fixed signing keystore [skip ci]"
-          git push origin HEAD
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          mkdir -p android-webview/keystore
+          keytool -genkeypair -v \
+            -keystore android-webview/keystore/release.keystore -storetype PKCS12 \
+            -alias petpaw -keyalg RSA -keysize 2048 -validity 10000 \
+            -storepass petpaw2026 -keypass petpaw2026 \
+            -dname "CN=PetPaw, OU=Family, O=PetPaw, L=Home, S=Home, C=CN"
+          echo "已生成固定签名 keystore（已缓存，后续复用同一签名）"
 
       - name: Install Gradle 8.6
         run: |
@@ -62,11 +51,10 @@ jobs:
           wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O /tmp/cmdline-tools.zip
           unzip -q /tmp/cmdline-tools.zip -d $HOME/android-sdk/cmdline-tools
           mv $HOME/android-sdk/cmdline-tools/cmdline-tools $HOME/android-sdk/cmdline-tools/latest
-          echo "$HOME/android-sdk/cmdline-tools/latest/bin" >> $GITHUB_PATH
-          export ANDROID_HOME=$HOME/android-sdk
-          export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin
-          yes | sdkmanager --sdk_root=$ANDROID_HOME --licenses
-          sdkmanager --sdk_root=$ANDROID_HOME "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+          echo "$HOME/android-sdk/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
+          echo "ANDROID_HOME=$HOME/android-sdk" >> "$GITHUB_ENV"
+          yes | sdkmanager --sdk_root=$HOME/android-sdk --licenses
+          sdkmanager --sdk_root=$HOME/android-sdk "platform-tools" "platforms;android-34" "build-tools;34.0.0"
 
       - name: Generate gradle wrapper
         working-directory: android-webview
