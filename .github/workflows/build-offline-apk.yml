@@ -31,6 +31,8 @@ jobs:
         if: steps.keystore-cache.outputs.cache-hit != 'true'
         run: |
           mkdir -p android-webview/keystore
+          # 仓库中可能已有旧 keystore（之前某次构建推入的），先删除再重新生成
+          rm -f android-webview/keystore/release.keystore
           keytool -genkeypair -v \
             -keystore android-webview/keystore/release.keystore -storetype PKCS12 \
             -alias petpaw -keyalg RSA -keysize 2048 -validity 10000 \
