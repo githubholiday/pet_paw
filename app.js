@@ -167,10 +167,6 @@ function saveState() {
    loadState 发现无数据 → 自动载入 DEFAULT_STATE（默认任务/商品/宠物，0 积分金币）。
    等价于把当前设备还原成刚装好的样子，常用于换孩子/清测试数据。 */
 function resetAllData() {
-  if (!state.parentMode) {
-    showToast('请先开启家长模式');
-    return;
-  }
   if (!confirm(
     '确定要恢复出厂设置吗？\n\n'
     + '将清空全部数据：任务、商品、宠物状态、积分、金币、兑换记录，\n'

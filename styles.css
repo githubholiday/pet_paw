@@ -1633,6 +1633,12 @@ body {
   color: var(--text-mid);
   box-shadow: none;
 }
+.password-actions .link-btn {
+  background: transparent;
+  color: #2D7FF9;
+  box-shadow: none;
+  font-weight: 600;
+}
 
 /* ===== Edit Modal ===== */
 .edit-popup .popup-card {
