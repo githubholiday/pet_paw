@@ -288,6 +288,12 @@ function exitParentMode() {
   showToast('已退出家长模式');
 }
 
+function forgetPassword() {
+  localStorage.setItem(PASSWORD_KEY, '1234');
+  closePopup('password-popup');
+  showToast('密码已重置为 1234，请重新进入家长模式');
+}
+
 /* ===== First-Time Setup Flow ===== */
 function checkFirstRun() {
   if (!localStorage.getItem(PASSWORD_KEY)) {
