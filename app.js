@@ -7,7 +7,7 @@ function getParentPassword() {
 }
 
 /* ===== Version & Config (升级与调参集中管理) ===== */
-const APP_VERSION = '2.0.0';      // 产品版本号（显示在"关于"）
+const APP_VERSION = '2.1.0';      // 产品版本号（显示在"关于"）
 const SCHEMA_VERSION = 5;         // 数据架构版本（localStorage 结构）；升级结构时 +1
 
 // 照顾宠物的花费（金币）——集中管理，方便平衡调整
