@@ -7,7 +7,7 @@ function getParentPassword() {
 }
 
 /* ===== Version & Config (升级与调参集中管理) ===== */
-const APP_VERSION = '2.0.0';      // 产品版本号（显示在"关于"）
+const APP_VERSION = '2.1.5';      // 产品版本号（显示在"关于"）
 const SCHEMA_VERSION = 5;         // 数据架构版本（localStorage 结构）；升级结构时 +1
 
 // 照顾宠物的花费（金币）——集中管理，方便平衡调整
@@ -145,12 +145,8 @@ function loadState() {
         pet: { ...DEFAULT_STATE.pet, ...data.pet },
         profile: { ...DEFAULT_STATE.profile, ...(data.profile || {}) },
         stats: { ...DEFAULT_STATE.stats, ...data.stats },
-        tasks: Array.isArray(data.tasks) && data.tasks.length
-          ? data.tasks.map(t => ({ ...TASK_FIELDS, ...t }))
-          : DEFAULT_TASKS.map(t => ({ ...t })),
-        products: Array.isArray(data.products) && data.products.length
-          ? data.products.map(p => ({ ...PRODUCT_FIELDS, ...p }))
-          : DEFAULT_PRODUCTS.map(p => ({ ...p })),
+        tasks: Array.isArray(data.tasks) ? data.tasks.map(t => ({ ...TASK_FIELDS, ...t })) : DEFAULT_TASKS.map(t => ({ ...t })),
+        products: Array.isArray(data.products) ? data.products.map(p => ({ ...PRODUCT_FIELDS, ...p })) : DEFAULT_PRODUCTS.map(p => ({ ...p })),
         exchanges: Array.isArray(data.exchanges) ? data.exchanges : [],
       };
     }
@@ -167,21 +163,34 @@ function saveState() {
    loadState 发现无数据 → 自动载入 DEFAULT_STATE（默认任务/商品/宠物，0 积分金币）。
    等价于把当前设备还原成刚装好的样子，常用于换孩子/清测试数据。 */
 function resetAllData() {
-  if (!state.parentMode) {
-    showToast('请先开启家长模式');
-    return;
-  }
-  if (!confirm(
-    '确定要恢复出厂设置吗？\n\n'
-    + '将清空全部数据：任务、商品、宠物状态、积分、金币、兑换记录，\n'
-    + '并需要重新设置家长密码。\n\n'
-    + '此操作不可撤销，建议先「导出备份」再操作。'
-  )) return;
+  // 用应用内自定义弹窗确认：PWA/standalone 模式下原生 confirm 常被静默拦截
+  // （表现为点"确认"却直接 return，removeItem 从不执行 → 数据无法清空）
+  document.getElementById('reset-confirm-popup').classList.add('show');
+}
+
+/* 真正执行恢复出厂：清存储 + 重置内存数据 + 重渲染 + 引导重设密码（不再依赖 location.reload 时序） */
+function doFactoryReset() {
+  closePopup('reset-confirm-popup');
   try {
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(PASSWORD_KEY);
   } catch (e) {}
-  location.reload();
+  // 直接把内存数据重置为出厂默认（深拷贝，避免污染 DEFAULT_STATE），并退出家长模式
+  state = JSON.parse(JSON.stringify(DEFAULT_STATE));
+  state.parentMode = false;
+  saveState();
+  // 关闭家长模式 UI
+  const pb = document.getElementById('parent-bar');
+  if (pb) pb.classList.remove('show');
+  const pt = document.getElementById('parent-toggle');
+  if (pt) pt.classList.remove('on');
+  const pmt = document.getElementById('parent-mode-text');
+  if (pmt) pmt.textContent = '未开启';
+  // 立即重渲染所有页面，数据清空立刻可见
+  renderHome(); renderTasks(); renderShop(); renderProfile();
+  showToast('✅ 已恢复出厂设置');
+  // 引导重新设置家长密码（恢复出厂后密码已清空，必须重设）
+  startSetup();
 }
 
 /* ===== Status Decay & Daily Reset ===== */
@@ -286,6 +295,12 @@ function exitParentMode() {
   document.getElementById('parent-mode-text').textContent = '未开启';
   refreshAll();
   showToast('已退出家长模式');
+}
+
+function forgetPassword() {
+  localStorage.setItem(PASSWORD_KEY, '1234');
+  closePopup('password-popup');
+  showToast('密码已重置为 1234，请重新进入家长模式');
 }
 
 /* ===== First-Time Setup Flow ===== */
@@ -1168,7 +1183,19 @@ function showTaskPopup(task) {
 function showExchangePopup(exchange) {
   document.getElementById('popup-ex-name').textContent = exchange.product;
   document.getElementById('popup-ex-code').textContent = exchange.id;
-  drawQRCode(exchange.id);
+  const verifyBtn = document.getElementById('popup-ex-verify');
+  const hint = document.getElementById('popup-ex-hint');
+  if (state.parentMode && exchange.status === 'pending') {
+    verifyBtn.style.display = '';
+    hint.textContent = '家长模式下可直接核销';
+    verifyBtn.onclick = function() {
+      verifyExchange(exchange.id);
+      closePopup('exchange-popup');
+    };
+  } else {
+    verifyBtn.style.display = 'none';
+    hint.textContent = '请让爸爸妈妈开启家长模式后核销哦~';
+  }
   document.getElementById('exchange-popup').classList.add('show');
 }
 
@@ -1261,15 +1288,12 @@ function importBackup(file) {
         pet: { ...DEFAULT_STATE.pet, ...data.pet },
         profile: { ...DEFAULT_STATE.profile, ...(data.profile || {}) },
         stats: { ...DEFAULT_STATE.stats, ...data.stats },
-        tasks: Array.isArray(data.tasks) && data.tasks.length
-          ? data.tasks.map(t => ({ ...TASK_FIELDS, ...t }))
-          : DEFAULT_TASKS.map(t => ({ ...t })),
-        products: Array.isArray(data.products) && data.products.length
-          ? data.products.map(p => ({ ...PRODUCT_FIELDS, ...p }))
-          : DEFAULT_PRODUCTS.map(p => ({ ...p })),
+        tasks: Array.isArray(data.tasks) ? data.tasks.map(t => ({ ...TASK_FIELDS, ...t })) : DEFAULT_TASKS.map(t => ({ ...t })),
+        products: Array.isArray(data.products) ? data.products.map(p => ({ ...PRODUCT_FIELDS, ...p })) : DEFAULT_PRODUCTS.map(p => ({ ...p })),
         exchanges: Array.isArray(data.exchanges) ? data.exchanges : [],
       };
       if (payload.password) localStorage.setItem(PASSWORD_KEY, payload.password);
+      normalizeIds();
       saveState();
       refreshAll();
       showToast('✅ 数据已恢复');
@@ -1281,38 +1305,7 @@ function importBackup(file) {
 }
 
 /* ===== QR Code ===== */
-function drawQRCode(text) {
-  const canvas = document.getElementById('qr-canvas');
-  if (!canvas) return;
-  const ctx = canvas.getContext('2d');
-  const size = 140;
-  canvas.width = size; canvas.height = size;
-  ctx.fillStyle = '#FFFFFF';
-  ctx.fillRect(0, 0, size, size);
-  const grid = 21;
-  const cell = size / grid;
-  ctx.fillStyle = '#3D3D3D';
-  let hash = 0;
-  for (let i = 0; i < text.length; i++) {
-    hash = ((hash << 5) - hash + text.charCodeAt(i)) | 0;
-  }
-  for (let y = 0; y < grid; y++) {
-    for (let x = 0; x < grid; x++) {
-      if ((x < 7 && y < 7) || (x >= grid - 7 && y < 7) || (x < 7 && y >= grid - 7)) {
-        if (x === 0 || x === 6 || y === 0 || y === 6 ||
-            (x >= 2 && x <= 4 && y >= 2 && y <= 4) ||
-            x === grid - 1 || x === grid - 7 || y === grid - 1 || y === grid - 7) {
-          ctx.fillRect(x * cell, y * cell, cell, cell);
-        }
-        if (x >= grid - 6 && x <= grid - 2 && y >= 2 && y <= 4) ctx.fillRect(x * cell, y * cell, cell, cell);
-        if (x >= 2 && x <= 4 && y >= grid - 6 && y <= grid - 2) ctx.fillRect(x * cell, y * cell, cell, cell);
-        continue;
-      }
-      if ((hash >> ((x * 7 + y * 13) % 31)) & 1) ctx.fillRect(x * cell, y * cell, cell, cell);
-      hash = (hash * 31 + x * 17 + y * 23) | 0;
-    }
-  }
-}
+/* 核销已改为家长模式直接核销，二维码展示不再需要，drawQRCode 已移除 */
 
 /* ===== Confetti ===== */
 function fireConfetti() {
@@ -1353,6 +1346,14 @@ function updateClock() {
   document.querySelectorAll('.status-time').forEach(el => el.textContent = `${h}:${m}`);
 }
 
+/* ===== ID 规范化：确保 nextTaskId / nextProductId 不小于现有最大 id（修复导入旧备份后新增 id 冲突） ===== */
+function normalizeIds() {
+  const maxTaskId = state.tasks.reduce((m, t) => Math.max(m, t.id || 0), 0);
+  const maxProdId = state.products.reduce((m, p) => Math.max(m, p.id || 0), 0);
+  state.nextTaskId = Math.max(state.nextTaskId || 0, maxTaskId + 1);
+  state.nextProductId = Math.max(state.nextProductId || 0, maxProdId + 1);
+}
+
 /* ===== Init ===== */
 function init() {
   // First-time password setup
@@ -1361,13 +1362,8 @@ function init() {
   checkDailyReset();
   applyDecay();
 
-  // Ensure IDs are set for new installs
-  if (!state.nextTaskId || state.nextTaskId < 5) {
-    state.nextTaskId = Math.max(...state.tasks.map(t => t.id), 4) + 1;
-  }
-  if (!state.nextProductId || state.nextProductId < 7) {
-    state.nextProductId = Math.max(...state.products.map(p => p.id), 6) + 1;
-  }
+  // Ensure IDs are set for new installs / 导入备份后对齐
+  normalizeIds();
 
   // Add category tabs container if not exists
   if (!document.getElementById('category-tabs')) {

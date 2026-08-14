@@ -1468,6 +1468,11 @@ body {
   box-shadow: 0 4px 12px rgba(255,200,87,0.4);
 }
 .popup-btn:active { transform: scale(0.97); }
+.verify-popup-btn {
+  background: #4CAF50;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(76,175,80,0.4);
+}
 
 /* Confetti */
 .confetti {
@@ -1632,6 +1637,12 @@ body {
   background: #E8E8E8;
   color: var(--text-mid);
   box-shadow: none;
+}
+.password-actions .link-btn {
+  background: transparent;
+  color: #2D7FF9;
+  box-shadow: none;
+  font-weight: 600;
 }
 
 /* ===== Edit Modal ===== */

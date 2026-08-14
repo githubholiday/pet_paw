@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
@@ -430,11 +430,9 @@
     <div class="popup-icon">🎁</div>
     <div class="popup-title">兑换成功！</div>
     <div class="popup-desc"><span id="popup-ex-name">小汽车玩具</span></div>
-    <div class="popup-qr">
-      <canvas id="qr-canvas"></canvas>
-    </div>
     <div class="popup-code" id="popup-ex-code">EX2026080401</div>
-    <div class="popup-desc">请找爸爸妈妈核销哦~</div>
+    <div class="popup-desc" id="popup-ex-hint">请让爸爸妈妈开启家长模式后核销哦~</div>
+    <button class="popup-btn verify-popup-btn" id="popup-ex-verify" style="display:none;">立即核销</button>
     <button class="popup-btn" onclick="closePopup('exchange-popup')">知道了</button>
   </div>
 </div>
@@ -466,6 +464,19 @@
     </div>
     <div class="password-actions">
       <button class="popup-btn cancel-btn" onclick="closePopup('password-popup')">取消</button>
+      <button class="popup-btn link-btn" onclick="forgetPassword()">忘记密码？</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Reset Confirm Popup ===== -->
+<div class="popup-overlay" id="reset-confirm-popup">
+  <div class="popup-card">
+    <div class="popup-title">⚠️ 恢复出厂设置</div>
+    <div class="popup-desc">将清空全部数据：任务、商品、宠物状态、积分、金币、兑换记录，并需要重新设置家长密码。<br><br>此操作不可撤销，建议先「导出备份」再操作。</div>
+    <div class="password-actions">
+      <button class="popup-btn cancel-btn" onclick="closePopup('reset-confirm-popup')">取消</button>
+      <button class="popup-btn link-btn" style="background:#D63A2F;color:#fff;box-shadow:none" onclick="doFactoryReset()">确认重置</button>
     </div>
   </div>
 </div>
