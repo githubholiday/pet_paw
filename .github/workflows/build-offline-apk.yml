@@ -40,17 +40,33 @@ jobs:
             -dname "CN=PetPaw, OU=Family, O=PetPaw, L=Home, S=Home, C=CN"
           echo "已生成固定签名 keystore（已缓存，后续复用同一签名）"
 
-      - name: Install Gradle 8.6
-        run: |
-          wget -q https://services.gradle.org/distributions/gradle-8.6-bin.zip -O /tmp/gradle.zip
-          mkdir -p /opt/gradle
-          unzip -q /tmp/gradle.zip -d /opt/gradle
-          echo "/opt/gradle/gradle-8.6/bin" >> $GITHUB_PATH
+      - name: Cache Gradle distribution
+        uses: actions/cache@v4
+        with:
+          path: /opt/gradle
+          key: gradle-dist-8.6
 
-      - name: Install Android SDK
+      - name: Install Gradle 8.6 (with retry)
+        run: |
+          if [ ! -x /opt/gradle/gradle-8.6/bin/gradle ]; then
+            for i in 1 2 3; do
+              wget -q --tries=3 --timeout=120 --retry-connrefused \
+                https://services.gradle.org/distributions/gradle-8.6-bin.zip -O /tmp/gradle.zip && break
+              echo "下载 gradle 失败，重试 $i/3"; sleep 5
+            done
+            mkdir -p /opt/gradle
+            unzip -q /tmp/gradle.zip -d /opt/gradle
+          fi
+          echo "/opt/gradle/gradle-8.6/bin" >> "$GITHUB_PATH"
+
+      - name: Install Android SDK (with retry)
         run: |
           mkdir -p $HOME/android-sdk/cmdline-tools
-          wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O /tmp/cmdline-tools.zip
+          for i in 1 2 3; do
+            wget -q --tries=3 --timeout=120 --retry-connrefused \
+              https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O /tmp/cmdline-tools.zip && break
+            echo "下载 cmdline-tools 失败，重试 $i/3"; sleep 5
+          done
           unzip -q /tmp/cmdline-tools.zip -d $HOME/android-sdk/cmdline-tools
           mv $HOME/android-sdk/cmdline-tools/cmdline-tools $HOME/android-sdk/cmdline-tools/latest
           export PATH="$HOME/android-sdk/cmdline-tools/latest/bin:$PATH"
@@ -62,13 +78,16 @@ jobs:
           yes | sdkmanager --sdk_root=$ANDROID_HOME --licenses
           sdkmanager --sdk_root=$ANDROID_HOME "platform-tools" "platforms;android-34" "build-tools;34.0.0"
 
-      - name: Generate gradle wrapper
-        working-directory: android-webview
-        run: gradle wrapper --gradle-version 8.6
+      - name: Cache Gradle dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.gradle/caches
+          key: gradle-caches-${{ hashFiles('android-webview/**/*.gradle') }}
+          restore-keys: gradle-caches-
 
       - name: Build release APK
         working-directory: android-webview
-        run: ./gradlew assembleRelease
+        run: gradle assembleRelease --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
