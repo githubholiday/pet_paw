@@ -20,25 +20,17 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Cache signing keystore
-        uses: actions/cache@v4
-        id: keystore-cache
-        with:
-          path: android-webview/keystore/release.keystore
-          key: petpaw-keystore-v1
-
-      - name: Ensure fixed signing keystore
-        if: steps.keystore-cache.outputs.cache-hit != 'true'
+      - name: Setup Android SDK (use runner's preinstalled SDK)
         run: |
-          mkdir -p android-webview/keystore
-          # 仓库中可能已有旧 keystore（之前某次构建推入的），先删除再重新生成
-          rm -f android-webview/keystore/release.keystore
-          keytool -genkeypair -v \
-            -keystore android-webview/keystore/release.keystore -storetype PKCS12 \
-            -alias petpaw -keyalg RSA -keysize 2048 -validity 10000 \
-            -storepass petpaw2026 -keypass petpaw2026 \
-            -dname "CN=PetPaw, OU=Family, O=PetPaw, L=Home, S=Home, C=CN"
-          echo "已生成固定签名 keystore（已缓存，后续复用同一签名）"
+          # ubuntu 镜像自带 Android SDK，ANDROID_SDK_ROOT 已由 runner 预设且不可被 $GITHUB_ENV 覆盖。
+          # 正确做法：直接使用它，并把 ANDROID_HOME 设成相等，从根上消除"两套 SDK 路径冲突"。
+          echo "Runner ANDROID_SDK_ROOT = $ANDROID_SDK_ROOT"
+          export ANDROID_HOME="$ANDROID_SDK_ROOT"
+          echo "ANDROID_HOME=$ANDROID_HOME" >> "$GITHUB_ENV"
+          export PATH="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH"
+          echo "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
+          yes | sdkmanager --sdk_root="$ANDROID_SDK_ROOT" --licenses
+          sdkmanager --sdk_root="$ANDROID_SDK_ROOT" "platform-tools" "platforms;android-34" "build-tools;34.0.0"
 
       - name: Cache Gradle distribution
         uses: actions/cache@v4
@@ -49,34 +41,25 @@ jobs:
       - name: Install Gradle 8.6 (with retry)
         run: |
           if [ ! -x /opt/gradle/gradle-8.6/bin/gradle ]; then
-            for i in 1 2 3; do
-              wget -q --tries=3 --timeout=120 --retry-connrefused \
+            for i in 1 2 3 4; do
+              wget -q --tries=3 --timeout=180 --retry-connrefused \
                 https://services.gradle.org/distributions/gradle-8.6-bin.zip -O /tmp/gradle.zip && break
-              echo "下载 gradle 失败，重试 $i/3"; sleep 5
+              echo "下载 gradle 失败，重试 $i/4"; sleep 8
             done
             mkdir -p /opt/gradle
             unzip -q /tmp/gradle.zip -d /opt/gradle
           fi
           echo "/opt/gradle/gradle-8.6/bin" >> "$GITHUB_PATH"
 
-      - name: Install Android SDK (with retry)
+      - name: Ensure fixed signing keystore (always regenerate)
         run: |
-          mkdir -p $HOME/android-sdk/cmdline-tools
-          for i in 1 2 3; do
-            wget -q --tries=3 --timeout=120 --retry-connrefused \
-              https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O /tmp/cmdline-tools.zip && break
-            echo "下载 cmdline-tools 失败，重试 $i/3"; sleep 5
-          done
-          unzip -q /tmp/cmdline-tools.zip -d $HOME/android-sdk/cmdline-tools
-          mv $HOME/android-sdk/cmdline-tools/cmdline-tools $HOME/android-sdk/cmdline-tools/latest
-          export PATH="$HOME/android-sdk/cmdline-tools/latest/bin:$PATH"
-          export ANDROID_HOME=$HOME/android-sdk
-          export ANDROID_SDK_ROOT=$HOME/android-sdk
-          echo "$HOME/android-sdk/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
-          echo "ANDROID_HOME=$HOME/android-sdk" >> "$GITHUB_ENV"
-          echo "ANDROID_SDK_ROOT=$HOME/android-sdk" >> "$GITHUB_ENV"
-          yes | sdkmanager --sdk_root=$ANDROID_HOME --licenses
-          sdkmanager --sdk_root=$ANDROID_HOME "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+          mkdir -p android-webview/keystore
+          rm -f android-webview/keystore/release.keystore
+          keytool -genkeypair -v \
+            -keystore android-webview/keystore/release.keystore -storetype PKCS12 \
+            -alias petpaw -keyalg RSA -keysize 2048 -validity 10000 \
+            -storepass petpaw2026 -keypass petpaw2026 \
+            -dname "CN=PetPaw, OU=Family, O=PetPaw, L=Home, S=Home, C=CN"
 
       - name: Cache Gradle dependencies
         uses: actions/cache@v4
@@ -85,11 +68,18 @@ jobs:
           key: gradle-caches-${{ hashFiles('android-webview/**/*.gradle') }}
           restore-keys: gradle-caches-
 
+      - name: Diagnostics
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
+          gradle --version
+
       - name: Build release APK
         working-directory: android-webview
-        run: gradle assembleRelease --no-daemon
+        run: gradle assembleRelease --no-daemon --stacktrace
 
       - name: Upload APK
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: child-pet-offline-apk

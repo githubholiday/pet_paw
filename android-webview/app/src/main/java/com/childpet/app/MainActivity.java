@@ -10,6 +10,7 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
 import android.webkit.JavascriptInterface;
+import android.webkit.JsPromptResult;
 import android.webkit.JsResult;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
@@ -79,7 +80,7 @@ public class MainActivity extends Activity {
             }
 
             @Override
-            public boolean onJsPrompt(WebView view, String url, String message, String defaultValue, JsResult result) {
+            public boolean onJsPrompt(WebView view, String url, String message, String defaultValue, JsPromptResult result) {
                 final EditText input = new EditText(MainActivity.this);
                 if (defaultValue != null) input.setText(defaultValue);
                 new AlertDialog.Builder(MainActivity.this)
